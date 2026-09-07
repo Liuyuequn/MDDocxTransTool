@@ -5,7 +5,6 @@ import {
   AlignmentType,
   LevelFormat,
   LineRuleType,
-  UnderlineType,
 } from "docx";
 import { ptToHalfPoint, ptToTwip } from "./options.js";
 
@@ -69,7 +68,20 @@ export function linesToTwip(lines, sizePt, lineCfg) {
   return Math.round(lines * h * 20);
 }
 
-/** docx 样式表：正文默认 + 六级标题 + 超链接字符样式 */
+/**
+ * 正文段落间距。
+ * 除写入 docDefaults 外，普通正文段落也会直接使用这组属性，避免 Word
+ * 在补全 Normal/List Paragraph 样式时把倍数行距显示或覆盖为单倍行距。
+ */
+export function bodyParagraphSpacing(opts) {
+  return resolveSpacing(
+    { beforePt: 0, afterPt: opts.paragraph.afterPt, afterLines: opts.paragraph.afterLines },
+    opts.sizes.body,
+    opts.paragraph
+  );
+}
+
+/** docx 样式表：正文默认 + 六级标题；超链接使用 docx 内置的 Hyperlink 字符样式 */
 export function buildStyles(opts) {
   const headingDefaults = (level) => {
     const i = level - 1;
@@ -90,13 +102,7 @@ export function buildStyles(opts) {
     default: {
       document: {
         run: { font: fontObj(opts.fonts.body), size: ptToHalfPoint(opts.sizes.body) },
-        paragraph: {
-          spacing: resolveSpacing(
-            { beforePt: 0, afterPt: opts.paragraph.afterPt, afterLines: opts.paragraph.afterLines },
-            opts.sizes.body,
-            opts.paragraph
-          ),
-        },
+        paragraph: { spacing: bodyParagraphSpacing(opts) },
       },
       heading1: headingDefaults(1),
       heading2: headingDefaults(2),
@@ -105,13 +111,6 @@ export function buildStyles(opts) {
       heading5: headingDefaults(5),
       heading6: headingDefaults(6),
     },
-    characterStyles: [
-      {
-        id: "Hyperlink",
-        name: "Hyperlink",
-        run: { color: "0563C1", underline: { type: UnderlineType.SINGLE } },
-      },
-    ],
   };
 }
 

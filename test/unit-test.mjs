@@ -1,4 +1,4 @@
-// 单元测试：纯函数层（单位换算、字号解析、深合并、参数解析）
+// 单元测试：纯函数层（单位换算、字号解析、深合并、参数解析、docx 导入注释）
 // 运行：node test/unit-test.mjs（npm test 会先跑本文件再跑端到端校验）
 
 import { test } from "node:test";
@@ -16,6 +16,11 @@ import { parseArgs, parseMargin, parseHeadingSize } from "../src/args.js";
 import { validPresetName } from "../src/preset-extract.js";
 import { maxImageWidthPx } from "../src/inline.js";
 import { linesToTwip } from "../src/styles.js";
+import {
+  commentAnnotation,
+  revisionComment,
+  summarizeCommentRange,
+} from "../src/docx-import/document-model.js";
 
 // ============ preset-extract.js：预设名校验 ============
 
@@ -295,4 +300,24 @@ test("maxImageWidthPx: 窄页面上限更小（A5 横向口径）", () => {
   const a5 = mergeOptions(defaultOptions, { page: { size: "A5" } });
   const contentTwip = PAGE_SIZES.A5.width - 2 * cmToTwip(defaultOptions.page.margin.left);
   assert.equal(maxImageWidthPx(a5), Math.floor(contentTwip / 15));
+});
+
+// ============ docx-import：修订与批注注释 ============
+
+test("revisionComment: 修订前原文写入 Markdown 注释", () => {
+  assert.equal(revisionComment("旧条款"), "<!-- 此处系修订；修订前原文：旧条款 -->");
+});
+
+test("summarizeCommentRange: 超过 20 字符时保留首尾各 10 字符", () => {
+  assert.equal(
+    summarizeCommentRange("ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+    "ABCDEFGHIJ……QRSTUVWXYZ"
+  );
+});
+
+test("commentAnnotation: 标注范围并包含批注正文", () => {
+  assert.equal(
+    commentAnnotation("被批注内容", "请核对此条款"),
+    "<!-- 批注范围：“被批注内容”；此处有批注：请核对此条款 -->"
+  );
 });

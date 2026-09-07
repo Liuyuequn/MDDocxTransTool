@@ -12,7 +12,8 @@ export const presets = {
     page: {
       size: "A4",
       orientation: "portrait",
-      margin: { top: 2.54, right: 3.18, bottom: 2.54, left: 3.18 },
+      // 页眉距顶端 0.85cm：将整组页眉内容上移，为渐变分割线与正文留出少许空间
+      margin: { top: 2.54, right: 3.18, bottom: 2.54, left: 3.18, header: 0.85 },
     },
     fonts: {
       body: { eastAsia: "仿宋", ascii: "Times New Roman" },

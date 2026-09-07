@@ -43,6 +43,12 @@ function buildDocument(mdText, opts, basePath) {
               right: cmToTwip(opts.page.margin.right),
               bottom: cmToTwip(opts.page.margin.bottom),
               left: cmToTwip(opts.page.margin.left),
+              header: opts.page.margin.header != null
+                ? cmToTwip(opts.page.margin.header)
+                : undefined,
+              footer: opts.page.margin.footer != null
+                ? cmToTwip(opts.page.margin.footer)
+                : undefined,
             },
             pageNumbers: buildPageNumbers(opts),
           },
@@ -67,5 +73,8 @@ function makeCtx(opts, basePath) {
     instance: 0,
     quote: false,
     forceBold: false,
+    // docx 9.x 未显式指定 wp:docPr id 时可能为多个图片重复生成 id=1。
+    // 所有通过浅拷贝派生的解析上下文共享此计数器。
+    drawingIds: { next: 1 },
   };
 }

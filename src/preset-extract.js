@@ -157,9 +157,13 @@ export async function extractPresetOptions(docxPath) {
     const pgMar = kid(sectPr, "w:pgMar");
     if (pgMar) {
       const cm = (k) => round2(Number(attr(pgMar, `w:${k}`)) / TWIP_PER_CM);
+      const margin = { top: cm("top"), right: cm("right"), bottom: cm("bottom"), left: cm("left") };
+      // 页眉/页脚距页面边缘是可选属性；存在时一并保留，确保预设往返不丢失垂直位置。
+      if (attr(pgMar, "w:header") != null) margin.header = cm("header");
+      if (attr(pgMar, "w:footer") != null) margin.footer = cm("footer");
       opts.page = {
         ...opts.page,
-        margin: { top: cm("top"), right: cm("right"), bottom: cm("bottom"), left: cm("left") },
+        margin,
       };
     }
     const vAlign = attr(kid(sectPr, "w:vAlign"), "w:val");
@@ -647,8 +651,11 @@ export function presetSummaryLines(options) {
     const m = p.margin
       ? `，边距 上${p.margin.top}/右${p.margin.right}/下${p.margin.bottom}/左${p.margin.left}cm`
       : "";
+    const hf = p.margin
+      ? `${p.margin.header != null ? `，页眉距顶端${p.margin.header}cm` : ""}${p.margin.footer != null ? `，页脚距底端${p.margin.footer}cm` : ""}`
+      : "";
     const v = p.vAlign ? `，内容${cn[p.vAlign] ?? p.vAlign}对齐` : "";
-    L.push(`页面    ${p.size} ${p.orientation === "landscape" ? "横向" : "纵向"}${m}${v}`);
+    L.push(`页面    ${p.size} ${p.orientation === "landscape" ? "横向" : "纵向"}${m}${hf}${v}`);
   }
   if (options.fonts?.body || options.sizes?.body || options.paragraph) {
     const parts = [];

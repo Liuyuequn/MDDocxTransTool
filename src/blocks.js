@@ -15,7 +15,7 @@ import {
   WidthType,
 } from "docx";
 import { ptToHalfPoint } from "./options.js";
-import { ALIGN_MAP, fontObj } from "./styles.js";
+import { ALIGN_MAP, bodyParagraphSpacing, fontObj } from "./styles.js";
 import { parseInline, getAttr } from "./inline.js";
 
 const HEADINGS = [
@@ -145,7 +145,9 @@ export function parseBlocks(tokens, start, end, ctx, state) {
 /** 普通段落构造：应用正文对齐、首行缩进（仅普通段落）、列表编号、引用样式 */
 function makeParagraph(runs, ctx, extra = {}) {
   const { opts } = ctx;
-  const props = { children: runs };
+  // 行距同时写入段落直接格式。只依赖 docDefaults 时，Word 可能补全内置
+  // Normal/List Paragraph 样式并在界面中把有效行距显示为 1 倍。
+  const props = { children: runs, spacing: bodyParagraphSpacing(opts) };
   const isNormal = ctx.listLevel < 0 && !ctx.quote;
   if (isNormal && opts.paragraph.align) props.alignment = ALIGN_MAP[opts.paragraph.align];
   if (isNormal && opts.paragraph.firstLineChars > 0) {
@@ -248,7 +250,9 @@ function parseTable(tokens, start, end, ctx) {
         k++;
       }
     }
-    rows.push(new TableRow({ children: cells, tableHeader: isHeader }));
+    // false 会被 docx 序列化为不符合当前 Schema 的 w:tblHeader w:val="false"；
+    // 非表头行应直接省略该可选元素。
+    rows.push(new TableRow({ children: cells, tableHeader: isHeader || undefined }));
     if (isHeader) isHeader = false;
     j = trClose + 1;
   }

@@ -132,9 +132,15 @@ function makeImageRun(token, ctx) {
   const absPath = path.resolve(ctx.basePath, decodeURIComponent(src.replace(/^file:\/\//, "")));
   const { data, dim, type } = loadImage(absPath);
   const scale = Math.min(1, maxImageWidthPx(ctx.opts) / dim.width);
+  const drawingId = String(ctx.drawingIds.next++);
   return new ImageRun({
     type,
     data,
+    altText: {
+      id: drawingId,
+      name: `MDTT Image ${drawingId}`,
+      description: token.content || undefined,
+    },
     transformation: {
       width: Math.round(dim.width * scale),
       height: Math.round(dim.height * scale),

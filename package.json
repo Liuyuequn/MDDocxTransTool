@@ -10,7 +10,9 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node test/unit-test.mjs && node test/run-test.mjs"
+    "test": "npm run test:node && npm run test:openxml",
+    "test:node": "node test/unit-test.mjs && node test/run-test.mjs",
+    "test:openxml": "dotnet restore test/openxml-validator/MDTT.OpenXmlValidator.csproj --locked-mode && dotnet run --project test/openxml-validator/MDTT.OpenXmlValidator.csproj --configuration Release --no-restore -- test/sample-default.docx test/sample-sundy.docx test/sample-custom.docx"
   },
   "keywords": [
     "markdown",

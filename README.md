@@ -6,7 +6,7 @@ MDTT 是一款 Markdown 与 Word（docx）互转命令行工具。支持双向�
 
 - **Markdown → docx**：`MDTT file.md [参数]`，可深度定制版式（页面、字体、页眉页脚等）
 
-- **docx → Markdown**：`MDTT file.docx [参数]`，保留标题、列表、表格、加粗/斜体、超链接、图片等结构
+- **docx → Markdown**：`MDTT file.docx [参数]`，保留标题、列表、表格、加粗/斜体、超链接、图片等结构；接受修订并记录原文，提取批注，线性化文本框和分节内容
 
 ### 技术栈
 
@@ -37,21 +37,29 @@ MDTransTool/
 │   ├── header-footer.js      # md → docx 页眉页脚（文字/图片布局/页码/渐变色带）
 │   ├── styles.js             # md → docx 样式表、字体对象、间距换算、编号
 │   ├── page.js               # md → docx 页面属性（尺寸/边距/垂直对齐/页码格式）
-│   ├── docx-to-md.js         # docx → md 核心（mammoth 提取 → turndown 转换）
+│   ├── docx-to-md.js         # docx → md 编排层
+│   ├── docx-import/          # OOXML 预处理、富结构降级与 Markdown 渲染
+│   │   ├── extractors/       # 修订、批注、文本框、浮动对象、分节处理
+│   │   └── renderers/        # HTML → Markdown 与合并表格回退
 │   ├── preset-extract.js     # docx 版式提取为自定义预设（解包 OOXML 逆向映射）
 │   ├── args.js               # 参数解析：-- 参数规格表与校验
 │   ├── presets.js            # 预设方案（sundy：圣典法律文书）
 │   └── options.js            # 默认配置、单位换算、深合并
 └── test/
     ├── sample.md             # 测试样例（覆盖全部支持的语法）
-    ├── unit-test.mjs         # 单元测试（纯函数层：换算/字号/合并/参数解析/预设名校验）
-    ├── run-test.mjs          # 端到端校验（七组用例：默认/sundy/自定义/错误处理/docx→md/合并单元格/版式提取）
+    ├── unit-test.mjs         # 单元测试（换算、参数、预设名、修订/批注注释等）
+    ├── run-test.mjs          # 端到端校验（九组用例：转换、预设、富结构降级等）
+    ├── openxml-validator/    # Microsoft Open XML SDK Schema 验证器
     └── assets/               # 测试图片
 ```
 
 ### 系统要求
 
 - Node.js >= 18
+
+- 仅运行完整测试时：.NET 8 SDK（Microsoft Open XML SDK Schema 验证）
+
+完整测试使用 `npm test`；也可在端到端测试生成样例 docx 后，使用 `npm run test:openxml` 单独执行 Schema 验证。
 
 ## 二、本地安装
 
@@ -139,6 +147,20 @@ MDTT --help                                   # 忘记参数时查帮助
 - **图片容错**：图片缺失时以 `[图片缺失: ...]` 文本占位，不中断转换
 
 - **首页差异化**：`--first-*` / `--no-first-*` 系列参数实现首页页眉页脚独立设置
+
+### docx → Markdown 的富结构降级规则
+
+- **修订**：默认接受修订；在修订后内容后紧接 `<!-- 此处系修订；修订前原文：…… -->`
+
+- **批注**：在被批注内容后紧接 Markdown HTML 注释，记录批注范围和批注正文；范围超过 20 个字符时保留首尾各 10 个字符
+
+- **文本框**：移除文本框外形，将内部段落和表格按锚定位置线性排列
+
+- **浮动图片/图形**：丢弃位置、环绕和层级信息，按普通行内对象提取；没有可提取图片资源的纯矢量外形可能被忽略
+
+- **多栏/多节**：丢弃分栏和分节版式，正文内容按 OOXML 中的源顺序线性排列
+
+- **复杂直接格式**：尽可能保留 mammoth 可识别的语义格式，其余格式允许丢失且不额外警告
 
 ## 四、参数列表
 
@@ -275,6 +297,5 @@ MDTT 模板.docx --save-preset firm --overwrite  # 覆盖同名自定义预设
 | 正文字体 | 中文仿宋 / 西文 Times New Roman                                                                                                                      |
 | 正文字号 | 四号                                                                                                                                             |
 | 正文段落 | 首行缩进 2 字符；段后 0.5 行；行距 1.28 倍                                                                                                                   |
-| 页眉   | 三行左对齐：①圣典律师事务所 ②圣典官网：<https://www.sundylawyer.com/（超链接）③总所地址：南京市建邺区奥体大街68号新城科技园4A栋6楼、7楼；右端放置律所> logo；页眉底端红→橙→金渐变色带（以红为主）；仿宋/Times New Roman 小五 |
+| 页眉   | 距页面顶端 0.85cm；三行左对齐：①圣典律师事务所 ②圣典官网：<https://www.sundylawyer.com/（超链接）③总所地址：南京市建邺区奥体大街68号新城科技园4A栋6楼、7楼；右端放置律所> logo；页眉底端红→橙→金渐变色带（以红为主）；仿宋/Times New Roman 小五 |
 | 页脚   | 居中页码「第X页/共Y页」，仿宋/Times New Roman 五号                                                                                                            |
-

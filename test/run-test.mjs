@@ -1,4 +1,4 @@
-// 校验脚本：用例（默认转换 / preset sundy / 自定义参数 / 错误处理 / docx→md / 合并单元格 / 版式提取），检查生成的 docx 内部结构
+// 端到端校验：覆盖 md/docx 双向转换、预设、错误处理、Schema 前置输出与 docx 富结构降级
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -49,6 +49,11 @@ function docDefaults(stylesXml) {
   return m ? m[0] : "";
 }
 
+function paragraphWithText(documentXml, text) {
+  return (documentXml.match(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g) || [])
+    .find((p) => p.includes(text)) || "";
+}
+
 // ============ 用例 1：默认转换 ============
 console.log("—— 用例 1：默认转换 ——");
 const d = await convert("sample-default.docx");
@@ -58,6 +63,7 @@ const dfLineTwip = String(Math.round(DF.paragraph.line * 240));
 const dfIndentChars = String(Math.round(DF.paragraph.firstLineChars * 100));
 const dfAfterTwip = String(Math.round(DF.paragraph.afterLines * DF.sizes.body * DF.paragraph.line * 20));
 const dH1 = styleBlock(d.styles, "Heading1");
+const dBody = paragraphWithText(d.document, "中英文混排测试");
 [
   ["标题样式 Heading1", d.document.includes('<w:pStyle w:val="Heading1"/>')],
   ["六级标题 Heading6", d.document.includes('<w:pStyle w:val="Heading6"/>')],
@@ -76,6 +82,7 @@ const dH1 = styleBlock(d.styles, "Heading1");
   ["A4 页面尺寸", d.document.includes('w:w="11906"')],
   [`默认首行缩进两字符（firstLineChars=${dfIndentChars}）`, d.document.includes(`w:firstLineChars="${dfIndentChars}"`)],
   [`默认行距 ${DF.paragraph.line}（w:line=${dfLineTwip}）`, docDefaults(d.styles).includes(`w:line="${dfLineTwip}"`)],
+  [`正文段落直接写入 ${DF.paragraph.line} 倍行距`, dBody.includes(`w:line="${dfLineTwip}"`) && dBody.includes('w:lineRule="auto"')],
   [`默认段后 ${DF.paragraph.afterLines} 行（w:after=${dfAfterTwip}）`, docDefaults(d.styles).includes(`w:after="${dfAfterTwip}"`)],
   ["默认 H1 居中", dH1.includes('<w:jc w:val="center"/>')],
   ["默认无页眉", d.header === null],
@@ -95,6 +102,7 @@ const LG = presets.sundy;
 const lgA4w = String(PAGE_SIZES[LG.page.size].width);
 const lgMarginTop = String(cmToTwip(LG.page.margin.top));
 const lgMarginLeft = String(cmToTwip(LG.page.margin.left));
+const lgMarginHeader = String(cmToTwip(LG.page.margin.header));
 const lgH1Half = String(ptToHalfPoint(LG.sizes.heading[0]));
 const lgH4Half = String(ptToHalfPoint(LG.sizes.heading[3]));
 const lgBodyHalf = String(ptToHalfPoint(LG.sizes.body));
@@ -102,11 +110,13 @@ const lgHeaderHalf = String(ptToHalfPoint(LG.sizes.header));
 const lgFooterHalf = String(ptToHalfPoint(LG.sizes.footer));
 const lgLineTwip = String(Math.round(LG.paragraph.line * 240));
 const lgIndentChars = String(Math.round(LG.paragraph.firstLineChars * 100));
+const lBody = paragraphWithText(l.document, "中英文混排测试");
 [
   // 纸张
   ["A4 尺寸", l.document.includes(`w:w="${lgA4w}"`)],
   ["上下页边距按预设（twip）", l.document.includes(`w:top="${lgMarginTop}"`) && l.document.includes(`w:bottom="${lgMarginTop}"`)],
   ["左右页边距按预设（twip）", l.document.includes(`w:left="${lgMarginLeft}"`) && l.document.includes(`w:right="${lgMarginLeft}"`)],
+  [`页眉距顶端 ${LG.page.margin.header}cm，整体上移并与正文留白`, l.document.includes(`w:header="${lgMarginHeader}"`)],
   // 标题
   ["标题宋体", h1.includes('w:eastAsia="宋体"')],
   ["标题西文 Times New Roman", h1.includes('w:ascii="Times New Roman"')],
@@ -120,6 +130,7 @@ const lgIndentChars = String(Math.round(LG.paragraph.firstLineChars * 100));
   ["正文字号按预设（半磅）", lDefaults.includes(`<w:sz w:val="${lgBodyHalf}"/>`)],
   [`首行缩进两字符（firstLineChars=${lgIndentChars}）`, l.document.includes(`w:firstLineChars="${lgIndentChars}"`)],
   [`行距按预设（w:line=${lgLineTwip} auto）`, lDefaults.includes(`w:line="${lgLineTwip}"`) && lDefaults.includes('w:lineRule="auto"')],
+  [`sundy 正文段落直接写入 ${LG.paragraph.line} 倍行距`, lBody.includes(`w:line="${lgLineTwip}"`) && lBody.includes('w:lineRule="auto"')],
   // 页眉页脚
   ["页眉三行文字（所名/官网/地址）", l.header && l.header.includes("圣典律师事务所") && l.header.includes("圣典官网") && l.header.includes("总所地址") && l.header.includes("新城科技园4A栋6楼、7楼")],
   ["页眉左对齐", l.header && l.header.includes('<w:jc w:val="left"/>')],
@@ -377,6 +388,7 @@ console.log("\n—— 用例 7：--save-preset 格式提取与复用 ——");
   check("sundy往返-H1 居中加粗 H4 不加粗", lo.heading?.align?.[0] === "center" && lo.heading?.bold?.[0] === true && lo.heading?.bold?.[3] === false);
   check("sundy往返-标题段前 0.5 行段后 0 行", lo.heading?.spacing?.beforeLines === 0.5 && lo.heading?.spacing?.afterLines === 0);
   check("sundy往返-段落三项（缩进2/行距1.28/段后0.5行）", lo.paragraph?.firstLineChars === 2 && lo.paragraph?.line === 1.28 && lo.paragraph?.afterLines === 0.5);
+  check("sundy往返-页眉距顶端 0.85cm", lo.page?.margin?.header === 0.85);
   check("sundy往返-页眉三行左对齐", lo.header?.text?.split("\n").length === 3 && lo.header?.align === "left");
   check("sundy往返-页眉字号 9", lo.sizes?.header === 9);
   check("sundy往返-页脚字号 10.5", lo.sizes?.footer === 10.5);
@@ -474,6 +486,50 @@ console.log("\n—— 用例 8：图片超链接/标题、行距规则、格式�
   // 清理
   fs.rmSync(tmpHome8, { recursive: true, force: true });
   for (const p of [imgMd, imgDocx, exactDocx, exactReused, ambDocx]) fs.rmSync(p, { force: true });
+}
+
+// ============ 用例 9：docx 富结构降级（修订/批注/文本框/浮动对象/分节） ============
+console.log("\n—— 用例 9：docx 富结构降级 ——");
+{
+  const richDocx = path.join(__dirname, "rich-import.docx");
+  const richMd = path.join(__dirname, "rich-import.md");
+  const zip = await JSZip.loadAsync(fs.readFileSync(path.join(__dirname, "sample-default.docx")));
+  let documentXml = await zip.file("word/document.xml").async("string");
+
+  const richBlocks = [
+    '<w:p><w:del w:id="1" w:author="测试人员" w:date="2026-09-07T00:00:00Z"><w:r><w:delText>修订前文本</w:delText></w:r></w:del><w:ins w:id="2" w:author="测试人员" w:date="2026-09-07T00:01:00Z"><w:r><w:t>修订后文本</w:t></w:r></w:ins></w:p>',
+    '<w:p><w:commentRangeStart w:id="7"/><w:r><w:t>ABCDEFGHIJKLMNOPQRSTUVWXYZ</w:t></w:r><w:commentRangeEnd w:id="7"/><w:r><w:commentReference w:id="7"/></w:r></w:p>',
+    '<w:p><w:r><w:pict><v:shape id="TextBox1"><v:textbox><w:txbxContent><w:p><w:r><w:t>文本框第一段</w:t></w:r></w:p><w:p><w:r><w:t>文本框第二段</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r></w:p>',
+    '<w:p><w:pPr><w:sectPr><w:cols w:num="2" w:space="720"/></w:sectPr></w:pPr><w:r><w:t>第一节末尾内容</w:t></w:r></w:p>',
+    '<w:p><w:r><w:t>第二节线性内容</w:t></w:r></w:p>',
+  ].join("");
+  documentXml = documentXml.replace("<w:sectPr", `${richBlocks}<w:sectPr`);
+  documentXml = documentXml
+    .replace("<wp:inline ", "<wp:anchor ")
+    .replace("</wp:inline>", "</wp:anchor>")
+    .replace('descr="测试图片"', 'descr="浮动图片测试"');
+  zip.file("word/document.xml", documentXml);
+  zip.file("word/comments.xml", [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+    '<w:comment w:id="7" w:author="批注人" w:date="2026-09-07T00:02:00Z">',
+    '<w:p><w:r><w:t>请核对此处条款</w:t></w:r></w:p>',
+    '</w:comment></w:comments>',
+  ].join(""));
+  fs.writeFileSync(richDocx, await zip.generateAsync({ type: "nodebuffer" }));
+
+  execFileSync(process.execPath, [cli, richDocx, "-o", richMd, "--overwrite"], { stdio: "pipe" });
+  const markdown = fs.readFileSync(richMd, "utf-8");
+  check("修订-采用修订后文本", markdown.includes("修订后文本") && !markdown.includes("修订前文本修订后文本"));
+  check("修订-紧接注释并记录修订前原文", markdown.includes("修订后文本<!-- 此处系修订；修订前原文：修订前文本 -->"));
+  check("批注-注释紧接被批注内容", markdown.includes("ABCDEFGHIJKLMNOPQRSTUVWXYZ<!-- 批注范围："));
+  check("批注-长范围保留首尾并省略中间", markdown.includes("ABCDEFGHIJ……QRSTUVWXYZ"));
+  check("批注-注释包含批注正文", markdown.includes("此处有批注：请核对此处条款"));
+  check("文本框-内容按普通段落线性输出", markdown.indexOf("文本框第一段") >= 0 && markdown.indexOf("文本框第一段") < markdown.indexOf("文本框第二段"));
+  check("浮动图片-降级为普通 Markdown 图片", markdown.includes("![浮动图片测试](MDPictures/"));
+  check("多栏多节-内容按源顺序线性排列", markdown.indexOf("第一节末尾内容") >= 0 && markdown.indexOf("第一节末尾内容") < markdown.indexOf("第二节线性内容"));
+
+  for (const file of [richDocx, richMd]) fs.rmSync(file, { force: true });
 }
 
 console.log(failed ? `\n${failed} 项校验未通过` : "\n全部校验通过");
