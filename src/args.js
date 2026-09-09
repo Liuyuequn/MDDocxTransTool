@@ -298,9 +298,50 @@ export function parseArgs(argv) {
 
 /** 生成帮助文本中的参数说明 */
 export function argsHelpText() {
-  return SPECS.map((s) => {
+  const optionWidth = 30;
+  const descriptionWidth = 60;
+  const border = `├${"─".repeat(optionWidth)}┼${"─".repeat(descriptionWidth)}┤`;
+  const top = `┌${"─".repeat(optionWidth)}┬${"─".repeat(descriptionWidth)}┐`;
+  const bottom = `└${"─".repeat(optionWidth)}┴${"─".repeat(descriptionWidth)}┘`;
+  const header = tableRow(["参数", "说明"], [optionWidth, descriptionWidth]);
+  const rows = SPECS.map((s) => {
     const alias = s.alias ? `, ${s.alias}` : "";
     const value = s.flag ? "" : " <值>";
-    return `  ${s.name}${alias}${value}\n      ${s.help}`;
-  }).join("\n");
+    return tableRows([`${s.name}${alias}${value}`, s.help], [optionWidth, descriptionWidth]);
+  });
+  return [top, header, border, ...rows.flat(), bottom].join("\n");
+}
+
+/** 按终端显示宽度计算字符串长度：中日韩全角字符占两列。 */
+function displayWidth(text) {
+  return [...text].reduce((width, char) => width + (/[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\uff01-\uff60\uffe0-\uffe6]/u.test(char) ? 2 : 1), 0);
+}
+
+/** 将文本按终端显示宽度折行，避免中英文混排时表格错位。 */
+function wrapTableCell(text, width) {
+  const lines = [];
+  let line = "";
+  let lineWidth = 0;
+  for (const char of text) {
+    const charWidth = displayWidth(char);
+    if (line && lineWidth + charWidth > width) {
+      lines.push(line);
+      line = "";
+      lineWidth = 0;
+    }
+    line += char;
+    lineWidth += charWidth;
+  }
+  if (line || lines.length === 0) lines.push(line);
+  return lines;
+}
+
+function tableRow(cells, widths) {
+  return `│${cells.map((cell, index) => `${cell}${" ".repeat(widths[index] - displayWidth(cell))}`).join("│")}│`;
+}
+
+function tableRows(cells, widths) {
+  const wrapped = cells.map((cell, index) => wrapTableCell(cell, widths[index]));
+  const height = Math.max(...wrapped.map((lines) => lines.length));
+  return Array.from({ length: height }, (_, line) => tableRow(wrapped.map((lines) => lines[line] || ""), widths));
 }

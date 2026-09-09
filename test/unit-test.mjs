@@ -12,7 +12,7 @@ import {
   PAGE_SIZES,
   defaultOptions,
 } from "../src/options.js";
-import { parseArgs, parseMargin, parseHeadingSize } from "../src/args.js";
+import { argsHelpText, parseArgs, parseMargin, parseHeadingSize } from "../src/args.js";
 import { validPresetName } from "../src/preset-extract.js";
 import { maxImageWidthPx } from "../src/inline.js";
 import { linesToTwip } from "../src/styles.js";
@@ -191,6 +191,14 @@ test("parseHeadingSize: 错误级数抛错", () => {
 });
 
 // ============ args.js：parseArgs ============
+
+test("argsHelpText: 参数列表以对齐表格输出", () => {
+  const help = argsHelpText();
+  assert.match(help, /^┌─+┬─+┐\n│参数\s+│说明\s+│\n├─+┼─+┤/u);
+  assert.match(help, /│--page-size, -s <值>\s+│A4/u);
+  assert.match(help, /│--save-preset <值>\s+│将 docx/u);
+  assert.match(help, /└─+┴─+┘$/u);
+});
 
 test("parseArgs: 别名与全名等价（-f 与 --font）", () => {
   const a = parseArgs(["-f", "宋体"]);
