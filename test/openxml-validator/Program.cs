@@ -4,7 +4,7 @@ using DocumentFormat.OpenXml.Validation;
 
 if (args.Length == 0)
 {
-    Console.Error.WriteLine("用法: MDTT.OpenXmlValidator <文件.docx> [更多文件.docx ...]");
+    Console.Error.WriteLine("用法: MDDTT.OpenXmlValidator <文件.docx> [更多文件.docx ...]");
     return 2;
 }
 

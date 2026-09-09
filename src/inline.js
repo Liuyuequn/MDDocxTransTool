@@ -138,7 +138,7 @@ function makeImageRun(token, ctx) {
     data,
     altText: {
       id: drawingId,
-      name: `MDTT Image ${drawingId}`,
+      name: `MDDTT Image ${drawingId}`,
       description: token.content || undefined,
     },
     transformation: {

@@ -1,12 +1,12 @@
-# MDTT — Markdown Trans Tool
+# MDDTT — Markdown Docx Trans Tool
 
 ## 一、基础信息
 
-MDTT 是一款 Markdown 与 Word（docx）互转命令行工具。支持双向转换：
+MDDTT 是一款 Markdown 与 Word（docx）互转命令行工具。支持双向转换：
 
-- **Markdown → docx**：`MDTT file.md [参数]`，可深度定制版式（页面、字体、页眉页脚等）
+- **Markdown → docx**：`mddtt file.md [参数]`，可深度定制版式（页面、字体、页眉页脚等）
 
-- **docx → Markdown**：`MDTT file.docx [参数]`，保留标题、列表、表格、加粗/斜体、超链接、图片等结构；接受修订并记录原文，提取批注，线性化文本框和分节内容
+- **docx → Markdown**：`mddtt file.docx [参数]`，保留标题、列表、表格、加粗/斜体、超链接、图片等结构；接受修订并记录原文，提取批注，线性化文本框和分节内容
 
 ### 技术栈
 
@@ -27,7 +27,7 @@ MDTT 是一款 Markdown 与 Word（docx）互转命令行工具。支持双向�
 ### 项目结构
 
 ```
-MDTransTool/
+MDDTT/
 ├── .github/workflows/ci.yml  # CI：push/PR 时在 Ubuntu/Windows × Node 18/20/22 上自动测试
 ├── src/
 │   ├── cli.js                # 命令行入口：双向转换路由、位置参数校验
@@ -70,51 +70,51 @@ npm install
 npm link
 ```
 
-`npm link` 会将 `MDTT` 命令注册为全局命令，之后即可在任意目录、任意终端中使用。
+`npm link` 会将 `mddtt` 命令注册为全局命令，之后即可在任意目录、任意终端中使用。
 
 ## 三、使用方法
 
 ### 基本用法
 
 ```bash
-MDTT <文件名>.md [参数]                  Markdown 转 docx
-MDTT <文件名>.docx [参数]                docx 转 Markdown
-MDTT <文件名>.docx --save-preset <预设名>  提取 docx 版式为自定义预设并保存
+mddtt <文件名>.md [参数]                  Markdown 转 docx
+mddtt <文件名>.docx [参数]                docx 转 Markdown
+mddtt <文件名>.docx --save-preset <预设名>  提取 docx 版式为自定义预设并保存
 ```
 
-文件名可省略后缀：MDTT 会自动匹配同目录同名的 `.md` / `.docx` 文件（两者同时存在时需写明后缀，因为后缀决定转换方向）。
+文件名可省略后缀：`mddtt` 会自动匹配同目录同名的 `.md` / `.docx` 文件（两者同时存在时需写明后缀，因为后缀决定转换方向）。
 
-文件名包含空格或特殊符号时，请用英文引号将「文件名+后缀」整体包裹（后缀也必须在引号内），如 `MDTT "我的 文档.md"`。文件名输错、空格未加引号、新旧语法混用等场景均有中文提示引导修正。
+文件名包含空格或特殊符号时，请用英文引号将「文件名+后缀」整体包裹（后缀也必须在引号内），如 `mddtt "我的 文档.md"`。文件名输错、空格未加引号、新旧语法混用等场景均有中文提示引导修正。
 
 ### 常用命令
 
 日常工作中高频使用的命令：
 
 ```bash
-MDTT <文件名>.md                              # 普通文档快速转换（默认格式：与 sundy 排版相同，仅无页眉页脚页码）
-MDTT <文件名>                                  # 省略后缀：自动匹配同目录同名的 .md / .docx
-MDTT "<含空格的文件名>.md"                      # 文件名含空格/特殊符号时，用英文引号整体包裹（含后缀）
-MDTT <文件名>.md -p bottom                    # 在页脚添加居中纯数字的页码
-MDTT <文件名>.md -p bottom --page-num-format 第X页/共Y页  # 页脚改为「第X页/共Y页」式页码
-MDTT <文件名>.md -o <输出路径>.docx           # 输出到指定路径（如直接存进案件文件夹）
-MDTT <文件名>.md --preset sundy               # 出法律文书（最常用：圣典排版，页眉页脚页码齐备）
-MDTT <文件名>.md --preset sundy --font 黑体   # 在法律文书预设基础上设置字体
-MDTT <文件名>.md --preset sundy --overwrite   # 如有重名文件，直接覆盖旧文件
-MDTT <文件名>.md --preset sundy --no-first-page-number  # 法律文书首页（封面）不显示页码
-MDTT <文件名>.md -p bottom --page-num-start 2 --no-first-page-number  # 封面不计页码，正文从第 2 页起（合同常用）
-MDTT <文件名>.md --header "保密文件"          # 页眉居中显示文字（密级标识、单位名称）
-MDTT <文件名>.md --header-left "委托代理合同" --header-right "2026-09"  # 页眉左右分布（左：文件标题，右：日期）
-MDTT <文件名>.md --orientation landscape      # 横向页面（宽表格、时间轴、证据清单）
-MDTT <文件名>.md -m 2.54,3.18,2.54,3.18       # 四边分别设置页边距（cm，顺序：上,右,下,左）
-MDTT <文件名>.md --indent 0                   # 取消首行缩进（英文文档、清单式材料）
-MDTT <文件名>.md --line-height 1.5            # 行距调整为 1.5 倍
-MDTT <文件名>.md --font-size 小四             # 单独调整正文字号（支持中文字号名）
-MDTT <文件名>.docx                            # 收到 Word 文档转回 Markdown 编辑
-MDTT <文件名>.docx --overwrite                # 重新转换时覆盖已存在的 md 文件
-MDTT <文件名>.docx -o <输出路径>.md           # docx 转 Markdown 并指定输出路径
-MDTT <文件名>.docx --save-preset <预设名>     # 将 Word 文档的版式提取为自定义预设（如律所官方模板）
-MDTT <文件名>.md --preset <预设名>            # 用提取的自定义预设转换
-MDTT --help                                   # 忘记参数时查帮助
+mddtt <文件名>.md                              # 普通文档快速转换（默认格式：与 sundy 排版相同，仅无页眉页脚页码）
+mddtt <文件名>                                  # 省略后缀：自动匹配同目录同名的 .md / .docx
+mddtt "<含空格的文件名>.md"                      # 文件名含空格/特殊符号时，用英文引号整体包裹（含后缀）
+mddtt <文件名>.md -p bottom                    # 在页脚添加居中纯数字的页码
+mddtt <文件名>.md -p bottom --page-num-format 第X页/共Y页  # 页脚改为「第X页/共Y页」式页码
+mddtt <文件名>.md -o <输出路径>.docx           # 输出到指定路径（如直接存进案件文件夹）
+mddtt <文件名>.md --preset sundy               # 出法律文书（最常用：圣典排版，页眉页脚页码齐备）
+mddtt <文件名>.md --preset sundy --font 黑体   # 在法律文书预设基础上设置字体
+mddtt <文件名>.md --preset sundy --overwrite   # 如有重名文件，直接覆盖旧文件
+mddtt <文件名>.md --preset sundy --no-first-page-number  # 法律文书首页（封面）不显示页码
+mddtt <文件名>.md -p bottom --page-num-start 2 --no-first-page-number  # 封面不计页码，正文从第 2 页起（合同常用）
+mddtt <文件名>.md --header "保密文件"          # 页眉居中显示文字（密级标识、单位名称）
+mddtt <文件名>.md --header-left "委托代理合同" --header-right "2026-09"  # 页眉左右分布（左：文件标题，右：日期）
+mddtt <文件名>.md --orientation landscape      # 横向页面（宽表格、时间轴、证据清单）
+mddtt <文件名>.md -m 2.54,3.18,2.54,3.18       # 四边分别设置页边距（cm，顺序：上,右,下,左）
+mddtt <文件名>.md --indent 0                   # 取消首行缩进（英文文档、清单式材料）
+mddtt <文件名>.md --line-height 1.5            # 行距调整为 1.5 倍
+mddtt <文件名>.md --font-size 小四             # 单独调整正文字号（支持中文字号名）
+mddtt <文件名>.docx                            # 收到 Word 文档转回 Markdown 编辑
+mddtt <文件名>.docx --overwrite                # 重新转换时覆盖已存在的 md 文件
+mddtt <文件名>.docx -o <输出路径>.md           # docx 转 Markdown 并指定输出路径
+mddtt <文件名>.docx --save-preset <预设名>     # 将 Word 文档的版式提取为自定义预设（如律所官方模板）
+mddtt <文件名>.md --preset <预设名>            # 用提取的自定义预设转换
+mddtt --help                                   # 忘记参数时查帮助
 ```
 
 ### 支持的 Markdown 语法
@@ -255,19 +255,19 @@ MDTT --help                                   # 忘记参数时查帮助
 预设可与单项参数混用，**单项参数覆盖预设中的对应项**：
 
 ```bash
-MDTT doc.md --preset sundy --font 黑体 --header "保密文件"
+mddtt doc.md --preset sundy --font 黑体 --header "保密文件"
 ```
 
 参数优先级：命令行单项参数 > `--preset` 预设 > 默认值。
 
 ### 自定义预设（从 docx 提取版式）
 
-将任意 Word 文档的版式提取为可复用的自定义预设，保存于 `~/.mdtt/presets/`：
+将任意 Word 文档的版式提取为可复用的自定义预设，保存于 `~/.mddtt/presets/`：
 
 ```bash
-MDTT 模板.docx --save-preset firm     # 提取版式保存为自定义预设 firm
-MDTT notes.md --preset firm           # 用自定义预设 firm 转换
-MDTT 模板.docx --save-preset firm --overwrite  # 覆盖同名自定义预设
+mddtt 模板.docx --save-preset firm     # 提取版式保存为自定义预设 firm
+mddtt notes.md --preset firm           # 用自定义预设 firm 转换
+mddtt 模板.docx --save-preset firm --overwrite  # 覆盖同名自定义预设
 ```
 
 **提取范围**：页面（尺寸/方向/页边距/垂直对齐）、正文字体与字号、段落（首行缩进/行距/段后距/对齐）、六级标题（字体/字号/加粗/对齐/间距）、页眉页脚（文字/对齐/字体字号/图片）、页码（位置/格式/对齐/起始页码）。行距支持倍数（auto）、固定值（exact）、最小值（atLeast）三种规则。

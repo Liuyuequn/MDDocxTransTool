@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// MDTT 命令行入口
-// 格式：MDTT <文件>.md [参数]                       → md 转 docx
-//       MDTT <文件>.docx [参数]                     → docx 转 md
-//       MDTT <文件>.docx --save-preset <预设名>      → 提取 docx 版式为自定义预设
+// mddtt 命令行入口
+// 格式：mddtt <文件>.md [参数]                       → md 转 docx
+//       mddtt <文件>.docx [参数]                     → docx 转 md
+//       mddtt <文件>.docx --save-preset <预设名>      → 提取 docx 版式为自定义预设
 // 参数优先级：命令行单项参数 > 预设（--preset）> 默认值（options.js）
 
 import fs from "node:fs";
@@ -20,24 +20,24 @@ import {
   presetSummaryLines,
 } from "./preset-extract.js";
 
-const USAGE = `MDTT - Markdown Trans Tool
+const USAGE = `MDDTT - Markdown Docx Trans Tool
 
 用法:
-  MDTT <文件名>.md [参数]                  Markdown 转 docx
-  MDTT <文件名>.docx [参数]                docx 转 Markdown
-  MDTT <文件名>.docx --save-preset <预设名>  提取 docx 版式为自定义预设并保存
+  mddtt <文件名>.md [参数]                  Markdown 转 docx
+  mddtt <文件名>.docx [参数]                docx 转 Markdown
+  mddtt <文件名>.docx --save-preset <预设名>  提取 docx 版式为自定义预设并保存
 
 示例:
-  MDTT notes.md                            使用默认格式转为 docx
-  MDTT notes.md --preset sundy             使用圣典法律文书预设转为 docx
-  MDTT report.docx                         docx 转为 Markdown
-  MDTT report.docx -o output.md            docx 转为 Markdown 并指定输出路径
-  MDTT report.docx --save-preset firm      将 report.docx 的版式保存为自定义预设 firm
-  MDTT notes.md --preset firm              用自定义预设 firm 转换
+  mddtt notes.md                            使用默认格式转为 docx
+  mddtt notes.md --preset sundy             使用圣典法律文书预设转为 docx
+  mddtt report.docx                         docx 转为 Markdown
+  mddtt report.docx -o output.md            docx 转为 Markdown 并指定输出路径
+  mddtt report.docx --save-preset firm      将 report.docx 的版式保存为自定义预设 firm
+  mddtt notes.md --preset firm              用自定义预设 firm 转换
 
 预设方案（仅 md → docx 时有效）:
   sundy    圣典法律文书（A4、宋体标题/仿宋正文、四号、首行缩进两字符、页眉页脚）
-  自定义   --save-preset 提取保存于 ~/.mdtt/presets/，用 --preset <名> 调用
+  自定义   --save-preset 提取保存于 ~/.mddtt/presets/，用 --preset <名> 调用
 
 参数列表（--save-preset 适用于 .docx，其余仅 md → docx 时有效）:
 ${argsHelpText()}
@@ -53,7 +53,7 @@ const argv = process.argv.slice(2);
 
 // 引号使用提示：文件名含空格或特殊符号时，须用英文引号将「文件名+后缀」整体包裹
 // （半包裹如 "文件.md".docx 会被 PowerShell 解析为属性访问，整个参数被丢弃，程序收到的将是空参数）
-const QUOTE_TIP = '提示: 文件名包含空格或特殊符号时，请用英文引号将「文件名+后缀」整体包裹（后缀也必须在引号内），例如: MDTT "我的 文档.md"';
+const QUOTE_TIP = '提示: 文件名包含空格或特殊符号时，请用英文引号将「文件名+后缀」整体包裹（后缀也必须在引号内），例如: mddtt "我的 文档.md"';
 
 if (argv.includes("--help") || argv.includes("-h")) {
   console.log(USAGE);
@@ -78,9 +78,9 @@ if (positional.length < 1) {
   process.exit(1);
 }
 
-// 旧语法提示：MDTT <文件>.docx to md → 扩展名即转换方向，无需 to md
+// 旧语法提示：mddtt <文件>.docx to md → 扩展名即转换方向，无需 to md
 if (positional.length === 3 && positional[1] === "to" && ["md", "docx"].includes(positional[2].toLowerCase())) {
-  console.error(`错误: 已不再需要「${positional.slice(1).join(" ")}」，扩展名即转换方向，请直接使用: MDTT ${positional[0]}`);
+  console.error(`错误: 已不再需要「${positional.slice(1).join(" ")}」，扩展名即转换方向，请直接使用: mddtt ${positional[0]}`);
   process.exit(1);
 }
 
@@ -103,7 +103,7 @@ if (!fs.existsSync(inputPath)) {
   console.error(`错误: 找不到文件 ${inputPath}`);
   if (positional.length > 1) {
     // 文件名含空格未加引号时，会被终端拆成多段——重组原始输入并给出正确写法
-    console.error(`提示: 文件名疑似包含空格但未加引号，被终端拆成了多段，请用英文引号将「文件名+后缀」整体包裹，如: MDTT "${positional.join(" ")}"`);
+    console.error(`提示: 文件名疑似包含空格但未加引号，被终端拆成了多段，请用英文引号将「文件名+后缀」整体包裹，如: mddtt "${positional.join(" ")}"`);
   } else {
     console.error("提示: 请检查文件名和路径是否输入正确");
   }
@@ -122,7 +122,7 @@ if (ext !== ".md" && ext !== ".docx") {
   process.exit(1);
 }
 if (positional.length !== 1) {
-  console.error(`错误: 无法识别的参数「${positional.slice(1).join(" ")}」，用法：MDTT <文件名>${ext} [选项参数]`);
+  console.error(`错误: 无法识别的参数「${positional.slice(1).join(" ")}」，用法：mddtt <文件名>${ext} [选项参数]`);
   console.error(QUOTE_TIP);
   process.exit(1);
 }
@@ -152,7 +152,7 @@ if (parsed.savePreset != null) {
       console.warn("注意:");
       for (const n of notes) console.warn(`  - ${n}`);
     }
-    console.log(`复用方式: MDTT <文件名>.md --preset ${parsed.savePreset}`);
+    console.log(`复用方式: mddtt <文件名>.md --preset ${parsed.savePreset}`);
   } catch (e) {
     console.error(`提取失败: ${e.message}`);
     process.exit(1);
@@ -180,7 +180,7 @@ if (ext === ".docx") {
   }
 } else {
   // ============ Markdown → docx 模式 ============
-  // 预设解析：先内置预设，再 ~/.mdtt/presets/ 自定义预设；单项参数 > 预设 > 默认值
+  // 预设解析：先内置预设，再 ~/.mddtt/presets/ 自定义预设；单项参数 > 预设 > 默认值
   let presetPatch = null;
   if (parsed.preset != null) {
     if (presets[parsed.preset]) {
@@ -197,7 +197,7 @@ if (ext === ".docx") {
       const custom = listCustomPresets();
       console.error(
         `错误: 未知预设「${parsed.preset}」，内置：${Object.keys(presets).join(" / ")}`
-        + (custom.length ? `；自定义：${custom.join(" / ")}（位于 ~/.mdtt/presets/）` : "")
+        + (custom.length ? `；自定义：${custom.join(" / ")}（位于 ~/.mddtt/presets/）` : "")
       );
       process.exit(1);
     }

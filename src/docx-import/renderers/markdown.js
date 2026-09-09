@@ -8,7 +8,7 @@ const MERGE_ATTR_RE = /\b(?:colspan|rowspan)\s*=/i;
 
 /** HTML → Markdown，并回填 OOXML 预处理阶段生成的修订/批注注释。 */
 export function renderMarkdown(rawHtml, annotations) {
-  const placeholderPrefix = `MDTTHTMLTABLE-${crypto.randomBytes(8).toString("hex")}`;
+  const placeholderPrefix = `MDDTTHTMLTABLE-${crypto.randomBytes(8).toString("hex")}`;
   const placeholder = (index) => `${placeholderPrefix}-${index}`;
   const { html, htmlTables } = preprocessHtml(rawHtml, placeholder);
 

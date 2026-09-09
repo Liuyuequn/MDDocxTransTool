@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 /** 创建一次转换独享的注释占位符仓库，避免与正文中的普通文本冲突。 */
 export function createAnnotationStore() {
-  const prefix = `MDTTANNOTATION${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
+  const prefix = `MDDTTANNOTATION${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
   const entries = [];
 
   return {

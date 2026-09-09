@@ -1,6 +1,6 @@
-// 从 docx 提取版式为 MDTT 预设：解包 OOXML 原始 XML，逆向映射为与 presets.js 同形的补丁
-// 入口（cli.js 路由）：MDTT <文件>.docx --save-preset <预设名>
-// 自定义预设保存于 ~/.mdtt/presets/<名>.json；MDTT_HOME 环境变量可重定向（供测试隔离）
+// 从 docx 提取版式为 MDDTT 预设：解包 OOXML 原始 XML，逆向映射为与 presets.js 同形的补丁
+// 入口（cli.js 路由）：mddtt <文件>.docx --save-preset <预设名>
+// 自定义预设保存于 ~/.mddtt/presets/<名>.json；MDDTT_HOME 环境变量可重定向（供测试隔离）
 
 import fs from "node:fs";
 import os from "node:os";
@@ -11,7 +11,7 @@ import { PAGE_SIZES } from "./options.js";
 
 const TWIP_PER_CM = 566.9291339;
 
-// pgNumType w:fmt → MDTT 页码格式特殊值（纯数字样式）
+// pgNumType w:fmt → MDDTT 页码格式特殊值（纯数字样式）
 const NUM_STYLE_FROM = {
   lowerRoman: "i",
   upperRoman: "I",
@@ -88,11 +88,11 @@ function spacingOf(pPr) {
 
 // ================= 自定义预设存取 =================
 
-/** 自定义预设目录：MDTT_HOME 可重定向（测试用），默认 ~/.mdtt/presets/ */
+/** 自定义预设目录：MDDTT_HOME 可重定向（测试用），默认 ~/.mddtt/presets/ */
 export function presetsDir() {
-  return process.env.MDTT_HOME
-    ? path.join(process.env.MDTT_HOME, "presets")
-    : path.join(os.homedir(), ".mdtt", "presets");
+  return process.env.MDDTT_HOME
+    ? path.join(process.env.MDDTT_HOME, "presets")
+    : path.join(os.homedir(), ".mddtt", "presets");
 }
 
 /** 预设名校验：中英文/数字/下划线/连字符，不以连字符开头，≤64 字符 */
@@ -602,7 +602,7 @@ function firstSizeIn(p) {
   const rPr = deepAll(p, "w:rPr").find((r) => kid(r, "w:sz"));
   return rPr ? halfPtFromRPr(rPr) : null;
 }
-/** jc → MDTT 对齐值；both/distribute/缺省视为默认（左） */
+/** jc → MDDTT 对齐值；both/distribute/缺省视为默认（左） */
 function jcToAlign(jc) {
   return jc === "center" || jc === "right" || jc === "left" ? jc : null;
 }
@@ -620,7 +620,7 @@ export async function extractAndSavePreset(docxPath, name, { overwrite = false }
   }
   const { options, notes, images } = await extractPresetOptions(docxPath);
   fs.mkdirSync(presetsDir(), { recursive: true });
-  // 图片落盘：~/.mdtt/presets/<名>.header.png 等，options 记录绝对路径与显示高度
+  // 图片落盘：~/.mddtt/presets/<名>.header.png 等，options 记录绝对路径与显示高度
   for (const kind of ["header", "footer"]) {
     const img = images?.[kind];
     if (!img) continue;

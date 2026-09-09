@@ -192,10 +192,10 @@ const SPECS = [
   // ---- 输出控制 ----
   { name: "--output", alias: "-o", help: "输出文件路径", cli: "output" },
   { name: "--overwrite", flag: true, help: "覆盖已存在的输出文件", cli: "overwrite" },
-  { name: "--preset", help: "预设方案：sundy（圣典法律文书），或 ~/.mdtt/presets/ 中的自定义预设", cli: "preset" },
+  { name: "--preset", help: "预设方案：sundy（圣典法律文书），或 ~/.mddtt/presets/ 中的自定义预设", cli: "preset" },
   {
     name: "--save-preset",
-    help: "将 docx 的版式提取为自定义预设并保存到 ~/.mdtt/presets/（仅 .docx，不执行转换）",
+    help: "将 docx 的版式提取为自定义预设并保存到 ~/.mddtt/presets/（仅 .docx，不执行转换）",
     cli: "savePreset",
   },
 ];

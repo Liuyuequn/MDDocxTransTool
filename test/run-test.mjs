@@ -155,7 +155,7 @@ console.log("\n—— 用例 3：自定义参数 ——");
 const c = await convert("sample-custom.docx", [
   "--v-align", "center",
   "-p", "bottom", "--page-num-format", "第X页", "--page-num-start", "3",
-  "--header-left", "MDTT 测试", "--header-right", "2026-09-03",
+  "--header-left", "MDDTT 测试", "--header-right", "2026-09-03",
   "--font", "黑体", "--font-size", "小四",
   "--indent", "2", "--align", "justify", "--no-italic",
   "--margin", "2,2,3,2",
@@ -163,7 +163,7 @@ const c = await convert("sample-custom.docx", [
 [
   ["页面垂直居中（v-align center）", c.document.includes('w:vAlign w:val="center"') || c.document.includes('w:val="center"')],
   [`自定义页边距（上 2cm=${cmToTwip(2)} twip）`, c.document.includes(`w:top="${cmToTwip(2)}"`)],
-  ["左分布页眉（tab 右对齐）", c.header && c.header.includes("MDTT 测试") && c.header.includes("2026-09-03")],
+  ["左分布页眉（tab 右对齐）", c.header && c.header.includes("MDDTT 测试") && c.header.includes("2026-09-03")],
   ["页码格式“第X页”", c.footer && c.footer.includes("第") && c.footer.includes("PAGE")],
   ["起始页码 3", c.document.includes('w:start="3"')],
   ["正文黑体", c.styles.includes('w:eastAsia="黑体"')],
@@ -175,6 +175,13 @@ const c = await convert("sample-custom.docx", [
 
 // ============ 用例 4：错误处理 ============
 console.log("\n—— 用例 4：错误处理 ——");
+{
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf-8"));
+  const help = execFileSync(process.execPath, [cli, "--help"], { stdio: "pipe", encoding: "utf-8" });
+  check("npm 包名和产品描述统一为 MDDTT", packageJson.name === "mddtt" && packageJson.description.startsWith("MDDTT -"));
+  check("全局命令仅注册为 mddtt", JSON.stringify(packageJson.bin) === JSON.stringify({ mddtt: "./src/cli.js" }));
+  check("帮助文本使用 MDDTT 品牌和 mddtt 命令", help.startsWith("MDDTT -") && help.includes("mddtt notes.md"));
+}
 function expectError(name, args) {
   try {
     execFileSync(process.execPath, [cli, ...args], { stdio: "pipe" });
@@ -205,7 +212,7 @@ expectErrorWith("找不到文件提示检查文件名", ["no-such-file.md"], "�
 expectErrorWith(
   "文件名含空格未加引号提示整体包裹",
   ["no-such-dir", "我的", "文件.md"],
-  'MDTT "no-such-dir 我的 文件.md"',
+  'mddtt "no-such-dir 我的 文件.md"',
 );
 {
   // 不支持的扩展名：先造一个存在的 .txt 文件，确保走到扩展名校验分支而非“找不到文件”
@@ -333,10 +340,10 @@ console.log("\n—— 用例 6：docx → md 合并单元格（HTML 回退）—
 // ============ 用例 7：--save-preset 格式提取与复用 ============
 console.log("\n—— 用例 7：--save-preset 格式提取与复用 ——");
 {
-  // MDTT_HOME 重定向到临时目录，隔离用户真实的 ~/.mdtt/presets/
-  const tmpHome = path.join(__dirname, "tmp-mdtt-home");
+  // MDDTT_HOME 重定向到临时目录，隔离用户真实的 ~/.mddtt/presets/
+  const tmpHome = path.join(__dirname, "tmp-mddtt-home");
   fs.rmSync(tmpHome, { recursive: true, force: true });
-  const env = { ...process.env, MDTT_HOME: tmpHome };
+  const env = { ...process.env, MDDTT_HOME: tmpHome };
   const run = (args) => execFileSync(process.execPath, [cli, ...args], { stdio: "pipe", encoding: "utf-8", env });
 
   // ---- 7.1 从自定义参数生成的 docx 提取 ----
@@ -432,9 +439,9 @@ console.log("\n—— 用例 7：--save-preset 格式提取与复用 ——");
 // ============ 用例 8：图片超链接/标题、行距规则、格式二义性 ============
 console.log("\n—— 用例 8：图片超链接/标题、行距规则、格式二义性 ——");
 {
-  const tmpHome8 = path.join(__dirname, "tmp-mdtt-home-8");
+  const tmpHome8 = path.join(__dirname, "tmp-mddtt-home-8");
   fs.rmSync(tmpHome8, { recursive: true, force: true });
-  const env8 = { ...process.env, MDTT_HOME: tmpHome8 };
+  const env8 = { ...process.env, MDDTT_HOME: tmpHome8 };
   const run8 = (args) => execFileSync(process.execPath, [cli, ...args], { stdio: "pipe", encoding: "utf-8", env: env8 });
 
   // ---- 8.1 链接图片 + 图片标题 ----
