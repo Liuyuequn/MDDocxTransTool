@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import mammoth from "mammoth";
 import { createImageConverter } from "./docx-import/image-handler.js";
-import { prepareDocxForMarkdown } from "./docx-import/package-reader.js";
+import { prepareDocxBufferForMarkdown } from "./docx-import/package-reader.js";
 import { renderMarkdown } from "./docx-import/renderers/markdown.js";
 
 /** 图片输出目录名（位于输出 md 文件同目录下） */
@@ -21,13 +21,12 @@ const STYLE_MAP = [
 ];
 
 /**
- * 将 docx 转换为 Markdown 字符串。
+ * 将 docx 二进制内容转换为 Markdown 字符串。
+ * outputDir 为图片输出目录的父目录（图片写入 outputDir/MDPictures/）。
  * 修订默认接受并附原文注释；批注附于范围之后；文本框和分节内容线性排列。
  */
-export async function convertDocxToMarkdown(docxPath, outputDir) {
-  if (!fs.existsSync(docxPath)) throw new Error(`找不到文件 ${docxPath}`);
-
-  const { buffer, annotations } = await prepareDocxForMarkdown(docxPath);
+export async function convertDocxBufferToMarkdown(input, outputDir) {
+  const { buffer, annotations } = await prepareDocxBufferForMarkdown(input);
   const { value: rawHtml } = await mammoth.convertToHtml(
     { buffer },
     {
@@ -36,6 +35,12 @@ export async function convertDocxToMarkdown(docxPath, outputDir) {
     }
   );
   return renderMarkdown(rawHtml, annotations);
+}
+
+/** 将 docx 转换为 Markdown 字符串（convertDocxBufferToMarkdown 的路径版） */
+export async function convertDocxToMarkdown(docxPath, outputDir) {
+  if (!fs.existsSync(docxPath)) throw new Error(`找不到文件 ${docxPath}`);
+  return convertDocxBufferToMarkdown(fs.readFileSync(docxPath), outputDir);
 }
 
 /** 将 docx 转换为 Markdown 并写入文件。 */

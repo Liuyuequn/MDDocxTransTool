@@ -3,6 +3,16 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import MarkdownIt from "markdown-it";
+import { Document, Packer } from "docx";
+import JSZip from "jszip";
+import { parseBlocks } from "../src/blocks.js";
+import { presets } from "../src/presets.js";
+import { createMarkdownParser } from "../src/markdown.js";
+import { convertMarkdownFile } from "../src/converter.js";
 import {
   cmToTwip,
   ptToTwip,
@@ -21,6 +31,195 @@ import {
   revisionComment,
   summarizeCommentRange,
 } from "../src/docx-import/document-model.js";
+
+async function markdownParagraphs(source, opts = defaultOptions, md = new MarkdownIt()) {
+  const tokens = md.parse(source, {});
+  const ctx = { opts, basePath: process.cwd(), listLevel: -1, quote: false };
+  const children = parseBlocks(tokens, 0, tokens.length, ctx, { orderedInstance: 0 });
+  const zip = await JSZip.loadAsync(await Packer.toBuffer(new Document({ sections: [{ children }] })));
+  const xml = await zip.file("word/document.xml").async("string");
+  return xml.match(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g) || [];
+}
+
+/** 走真实解析器（含 breaks 处理），用于校验换行识别 */
+async function paragraphsFromSource(source, opts = defaultOptions) {
+  return markdownParagraphs(source, opts, createMarkdownParser(opts.markdown.breaks));
+}
+
+/** 端到端：按配置写出真实 docx 再读回 document.xml（覆盖 converter 的 breaks 接线） */
+async function documentXmlFor(source, opts = defaultOptions) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mddtt-unit-"));
+  const mdPath = path.join(dir, "in.md");
+  const docxPath = path.join(dir, "out.docx");
+  try {
+    fs.writeFileSync(mdPath, source, "utf-8");
+    await convertMarkdownFile(mdPath, docxPath, opts);
+    const zip = await JSZip.loadAsync(fs.readFileSync(docxPath));
+    return await zip.file("word/document.xml").async("string");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+for (const newline of ["\n", "\r\n"]) {
+  test(`Markdown 换行 ${JSON.stringify(newline)}：两空格保留段内换行，空行分段`, async () => {
+    const paragraphs = await markdownParagraphs(`第一句。  ${newline}**第二句。**${newline}${newline}第三句。`);
+    assert.equal(paragraphs.length, 2);
+    assert.equal((paragraphs[0].match(/<w:br\/>/g) || []).length, 1);
+    assert.match(paragraphs[0], /第一句。[\s\S]*<w:br\/>[\s\S]*第二句。/);
+    assert.match(paragraphs[0], /<w:b\/>/);
+    assert.match(paragraphs[0], /w:line="307" w:lineRule="auto"/);
+    // 1.5 行段后距按四号正文的行高换算：14 × 1.28 × 1.5 × 20 = 538 twip。
+    for (const paragraph of paragraphs) assert.match(paragraph, /w:after="538"/);
+    assert.match(paragraphs[1], /第三句。/);
+  });
+}
+
+test("Markdown 单个普通换行在 --no-breaks 下按软换行处理", async () => {
+  const noBreaks = mergeOptions(defaultOptions, { markdown: { breaks: false } });
+  const paragraphs = await paragraphsFromSource("第一句。\n第二句。", noBreaks);
+  assert.equal(paragraphs.length, 1);
+  assert.doesNotMatch(paragraphs[0], /<w:br/);
+  assert.match(paragraphs[0], /第一句。[\s\S]*第二句。/);
+});
+
+// ============ markdown.js：换行识别（breaks） ============
+
+test("createMarkdownParser: 默认 breaks 时单个换行符产出 hardbreak", () => {
+  const md = createMarkdownParser(true);
+  const tokens = md.parse("甲行\n乙行", {});
+  const inline = tokens.find((t) => t.type === "inline");
+  assert.deepEqual(inline.children.map((t) => t.type), ["text", "hardbreak", "text"]);
+});
+
+test("createMarkdownParser: breaks 关闭时单个换行符仍为 softbreak", () => {
+  const md = createMarkdownParser(false);
+  const tokens = md.parse("甲行\n乙行", {});
+  const inline = tokens.find((t) => t.type === "inline");
+  assert.deepEqual(inline.children.map((t) => t.type), ["text", "softbreak", "text"]);
+});
+
+test("createMarkdownParser: breaks 开启时双空格换行与行尾反斜杠同为 hardbreak", () => {
+  const md = createMarkdownParser(true);
+  for (const src of ["甲行  \n乙行", "甲行\\\n乙行"]) {
+    const inline = md.parse(src, {}).find((t) => t.type === "inline");
+    assert.deepEqual(inline.children.map((t) => t.type), ["text", "hardbreak", "text"]);
+  }
+});
+
+test("createMarkdownParser: breaks 开启时空行仍分段", () => {
+  const md = createMarkdownParser(true);
+  const tokens = md.parse("甲段\n\n乙段", {});
+  assert.equal(tokens.filter((t) => t.type === "inline").length, 2);
+});
+
+test("createMarkdownParser: breaks 不改变代码块内容", () => {
+  const md = createMarkdownParser(true);
+  const tokens = md.parse("```\n甲行\n乙行\n```", {});
+  const fence = tokens.find((t) => t.type === "fence");
+  assert.equal(fence.content, "甲行\n乙行\n");
+});
+
+test("normalizeBlankLines: 换行识别不改变代码块内容", () => {
+  const md = createMarkdownParser(true);
+  const tokens = md.parse("```\ncode  \n\ncode2\n```", {});
+  const fence = tokens.find((t) => t.type === "fence");
+  assert.equal(fence.content, "code  \n\ncode2\n");
+});
+
+test("defaultOptions: 默认启用换行识别（breaks）", () => {
+  assert.equal(defaultOptions.markdown.breaks, true);
+});
+
+test("convertMarkdownFile: 默认配置下单个换行渲染为段内换行（w:br）", async () => {
+  const xml = await documentXmlFor("甲行\n乙行\n\n新段落\n");
+  const paragraphs = xml.match(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g) || [];
+  assert.equal(paragraphs.length, 2);
+  assert.equal((paragraphs[0].match(/<w:br\/>/g) || []).length, 1);
+  assert.match(paragraphs[0], /甲行[\s\S]*<w:br\/>[\s\S]*乙行/);
+  assert.doesNotMatch(paragraphs[1], /<w:br\/>/);
+});
+
+test("convertMarkdownFile: --no-breaks 配置下单换行合并为同行", async () => {
+  const noBreaks = mergeOptions(defaultOptions, { markdown: { breaks: false } });
+  const xml = await documentXmlFor("甲行\n乙行\n", noBreaks);
+  assert.doesNotMatch(xml, /<w:br\/>/);
+  assert.match(xml, /甲行[\s\S]*乙行/);
+});
+
+// ============ converter.js：settings.xml 兼容性设置 ============
+
+/** 读取生成文档的 settings.xml */
+async function settingsXmlFor(source, opts = defaultOptions) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mddtt-set-"));
+  const mdPath = path.join(dir, "in.md");
+  const docxPath = path.join(dir, "out.docx");
+  try {
+    fs.writeFileSync(mdPath, source, "utf-8");
+    await convertMarkdownFile(mdPath, docxPath, opts);
+    const zip = await JSZip.loadAsync(fs.readFileSync(docxPath));
+    return await zip.file("word/settings.xml").async("string");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("convertMarkdownFile: 换行后补两字符缩进（全角空格×2）", async () => {
+  const xml = await documentXmlFor("甲行\n乙行\n");
+  // 换行符后紧接两个全角空格（U+3000），使段内后续各行与首行左端对齐
+  assert.match(xml, /<w:br\/><\/w:r><w:r><w:t xml:space="preserve">\u3000\u3000<\/w:t><\/w:r><w:r><w:t[^>]*>乙行/);
+  assert.equal((xml.match(/\u3000\u3000/g) || []).length, 1);
+});
+
+test("convertMarkdownFile: 换行缩进不重复叠加（续行原有前导空格被忽略）", async () => {
+  const xml = await documentXmlFor("甲行  \n   乙行\n");
+  assert.equal((xml.match(/\u3000/g) || []).length, 2);
+});
+
+test("convertMarkdownFile: --no-breaks 时单换行不产生缩进", async () => {
+  const noBreaks = mergeOptions(defaultOptions, { markdown: { breaks: false } });
+  const xml = await documentXmlFor("甲行\n乙行\n", noBreaks);
+  assert.doesNotMatch(xml, /\u3000/);
+});
+
+test("convertMarkdownFile: 换行后的行内代码同样获得缩进", async () => {
+  const xml = await documentXmlFor("甲行\n`code` 后文\n");
+  assert.match(xml, /<w:br\/><\/w:r><w:r><w:t xml:space="preserve">\u3000\u3000<\/w:t><\/w:r>/);
+});
+
+test("settings.xml: 写入 doNotExpandShiftReturn（不拉伸换行符结尾的行）", async () => {
+  const settings = await settingsXmlFor("甲行\n乙行\n");
+  assert.match(settings, /<w:doNotExpandShiftReturn\/>/);
+});
+
+test("settings.xml: compatSetting 排在 doNotExpandShiftReturn 之后（符合 CT_Compat 顺序）", async () => {
+  const settings = await settingsXmlFor("甲行\n乙行\n");
+  const compat = /<w:compat>[\s\S]*?<\/w:compat>/.exec(settings);
+  assert.ok(compat, "settings.xml 应包含 w:compat");
+  const flagsAt = compat[0].indexOf("<w:doNotExpandShiftReturn/>");
+  const settingAt = compat[0].indexOf("<w:compatSetting");
+  assert.ok(flagsAt >= 0 && settingAt >= 0, "两个元素都应存在");
+  assert.ok(flagsAt < settingAt, "compatSetting 必须位于兼容性开关之后");
+});
+
+test("sundy 混合换行：段内 1.28 倍，段后 1.5 行，不插入空段落", async () => {
+  const paragraphs = await markdownParagraphs("甲。  \n乙。\n\n丙。  \n丁。", mergeOptions(defaultOptions, presets.sundy));
+  assert.equal(paragraphs.length, 2);
+  for (const paragraph of paragraphs) {
+    assert.match(paragraph, /w:after="538"/);
+    assert.match(paragraph, /w:line="307" w:lineRule="auto"/);
+    assert.equal((paragraph.match(/<w:br\/>/g) || []).length, 1);
+  }
+});
+
+test("显式行距和段后距参数仍可覆盖默认换行排版", async () => {
+  const { patch } = parseArgs(["--line-height", "2", "--para-spacing", "8"]);
+  const paragraphs = await markdownParagraphs("甲。  \n乙。\n\n丙。", mergeOptions(defaultOptions, patch));
+  for (const paragraph of paragraphs) {
+    assert.match(paragraph, /w:after="160"/);
+    assert.match(paragraph, /w:line="480" w:lineRule="auto"/);
+  }
+});
 
 // ============ preset-extract.js：预设名校验 ============
 

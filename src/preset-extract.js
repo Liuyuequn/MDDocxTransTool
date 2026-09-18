@@ -87,8 +87,10 @@ function spacingOf(pPr) {
 }
 
 // ================= 自定义预设存取 =================
+// 存取函数均接受可选 dir 参数（预设目录），默认 ~/.mddtt/presets/。
+// 命令行沿用默认值；VS Code 插件传入自己的存储目录（用户级 / 工作区级）。
 
-/** 自定义预设目录：MDDTT_HOME 可重定向（测试用），默认 ~/.mddtt/presets/ */
+/** 命令行默认的自定义预设目录：MDDTT_HOME 可重定向（测试用），默认 ~/.mddtt/presets/ */
 export function presetsDir() {
   return process.env.MDDTT_HOME
     ? path.join(process.env.MDDTT_HOME, "presets")
@@ -100,20 +102,19 @@ export function validPresetName(name) {
   return /^[A-Za-z0-9_\u4e00-\u9fff][\w\u4e00-\u9fff-]{0,63}$/.test(String(name ?? ""));
 }
 
-export function customPresetPath(name) {
-  return path.join(presetsDir(), `${name}.json`);
+export function customPresetPath(name, dir = presetsDir()) {
+  return path.join(dir, `${name}.json`);
 }
 
 /** 列出自定义预设名（按名称排序）；目录不存在返回空数组 */
-export function listCustomPresets() {
-  const dir = presetsDir();
+export function listCustomPresets(dir = presetsDir()) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).sort();
 }
 
 /** 读取自定义预设的 options 补丁；不存在返回 null，文件损坏抛错 */
-export function loadCustomPreset(name) {
-  const file = customPresetPath(name);
+export function loadCustomPreset(name, dir = presetsDir()) {
+  const file = customPresetPath(name, dir);
   if (!fs.existsSync(file)) return null;
   let data;
   try {
@@ -130,12 +131,14 @@ export function loadCustomPreset(name) {
 // ================= 提取核心 =================
 
 /**
- * 从 docx 提取版式，返回 { options, notes }：
+ * 从 docx 二进制内容提取版式，返回 { options, notes, images }：
  * options 为与 presets.js 条目同形的补丁（经 mergeOptions 深合并后生效）
  * notes 为无法映射项的中文说明
+ * images 为页眉/页脚图片的二进制（保存预设时落盘，见 savePresetFromExtraction）
+ * 接受 Buffer / Uint8Array，供命令行之外的宿主（如 VS Code 插件）直接复用。
  */
-export async function extractPresetOptions(docxPath) {
-  const zip = await JSZip.loadAsync(fs.readFileSync(docxPath));
+export async function extractPresetOptionsFromBuffer(buffer) {
+  const zip = await JSZip.loadAsync(buffer);
   const docXml = await zip.file("word/document.xml")?.async("string");
   if (!docXml) throw new Error("不是有效的 docx 文件（缺少 word/document.xml）");
   const stylesXml = (await zip.file("word/styles.xml")?.async("string")) ?? "";
@@ -335,6 +338,11 @@ export async function extractPresetOptions(docxPath) {
   }
 
   return { options: opts, notes, images };
+}
+
+/** 从 docx 文件提取版式（extractPresetOptionsFromBuffer 的路径版） */
+export async function extractPresetOptions(docxPath) {
+  return extractPresetOptionsFromBuffer(fs.readFileSync(docxPath));
 }
 
 /**
@@ -609,22 +617,36 @@ function jcToAlign(jc) {
 
 // ================= 保存与摘要 =================
 
-/** 提取并保存自定义预设；页眉/页脚图片落盘到预设旁并在 options 中记录路径。返回 { file, options, notes } */
-export async function extractAndSavePreset(docxPath, name, { overwrite = false } = {}) {
+/** 预设名校验（不合法时抛错） */
+export function assertPresetName(name) {
   if (!validPresetName(name)) {
     throw new Error(`预设名「${name}」不合法（仅限中英文、数字、下划线、连字符，且不以连字符开头）`);
   }
-  const file = customPresetPath(name);
+}
+
+/**
+ * 保存提取结果（extractPresetOptionsFromBuffer 的返回值）为自定义预设。
+ * 页眉/页脚图片落盘到预设目录旁并在 options 中记录路径。返回 { file, options, notes }
+ * dir 为预设目录（默认 ~/.mddtt/presets/，插件传入自己的存储目录）
+ * source 仅用于在预设文件中记录来源文档
+ */
+export async function savePresetFromExtraction(
+  extraction,
+  name,
+  { overwrite = false, dir = presetsDir(), source = null } = {}
+) {
+  assertPresetName(name);
+  const file = customPresetPath(name, dir);
   if (fs.existsSync(file) && !overwrite) {
     throw new Error(`预设已存在「${file}」，如需覆盖请加 --overwrite`);
   }
-  const { options, notes, images } = await extractPresetOptions(docxPath);
-  fs.mkdirSync(presetsDir(), { recursive: true });
-  // 图片落盘：~/.mddtt/presets/<名>.header.png 等，options 记录绝对路径与显示高度
+  const { options, notes, images } = extraction;
+  fs.mkdirSync(dir, { recursive: true });
+  // 图片落盘：<预设目录>/<名>.header.png 等，options 记录绝对路径与显示高度
   for (const kind of ["header", "footer"]) {
     const img = images?.[kind];
     if (!img) continue;
-    const imgPath = path.join(presetsDir(), `${name}.${kind}.${img.ext}`);
+    const imgPath = path.join(dir, `${name}.${kind}.${img.ext}`);
     fs.writeFileSync(imgPath, img.data);
     options[kind] = {
       ...options[kind],
@@ -633,13 +655,20 @@ export async function extractAndSavePreset(docxPath, name, { overwrite = false }
   }
   const data = {
     name,
-    source: path.resolve(docxPath),
+    source: source ?? null,
     extractedAt: new Date().toISOString(),
     notes,
     options,
   };
   fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\n", "utf-8");
   return { file, options, notes };
+}
+
+/** 提取并保存自定义预设（路径版）。返回 { file, options, notes } */
+export async function extractAndSavePreset(docxPath, name, opts = {}) {
+  assertPresetName(name); // 先校验预设名，保持命令行原有的错误优先级
+  const extraction = await extractPresetOptions(docxPath);
+  return savePresetFromExtraction(extraction, name, { ...opts, source: path.resolve(docxPath) });
 }
 
 /** 提取结果的人读摘要（逐行） */

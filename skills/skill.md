@@ -1,12 +1,32 @@
-# MDDTT — Markdown 与 docx 互转命令行工具
+# MDDTT — Markdown 与 docx 互转工具（命令行 + VS Code 插件）
 
 ## 触发条件
 
-当用户要求将 Markdown（.md）文件转换为 Word（.docx）文档，或将 Word（.docx）文件转换为 Markdown 时，使用此 Skill。
+当用户要求将 Markdown（.md）文件转换为 Word（.docx）文档，或将 Word（.docx）文件转换为 Markdown 时，使用此 Skill。用户要求「提取 Word 模板版式」「用某份 docx 的版式排版」时同样适用。
 
 ## 工具位置
 
-全局命令：`mddtt`（通过 `npm link` 注册，可在任意目录下使用）
+- 命令行全局命令：`mddtt`（通过 `npm link` 注册，可在任意目录下使用）
+- VS Code 插件：命令均以「MDDTT: 」开头（见下文「VS Code 插件」）
+- 项目仓库：<https://github.com/Liuyuequn/MDDocxTransTool>
+
+## VS Code 插件
+
+若当前环境是 VS Code，优先提示用户使用插件（无需记忆参数）：
+
+| 命令面板命令 | 资源管理器右键 | 说明 |
+| --- | --- | --- |
+| `MDDTT: Markdown 转 docx` | `.md` 文件 | 转为同目录同名 `.docx` |
+| `MDDTT: docx 转 Markdown` | `.docx` 文件 | 转为同目录同名 `.md` |
+| `MDDTT: 提取 docx 版式为预设` | `.docx` 文件 | 提取版式保存为自定义预设 |
+| `MDDTT: 选择默认预设` | — | 设置 md → docx 使用的预设 |
+
+要点：
+
+- 插件读取 docx **不需要 VS Code 能打开它**：右键 `.docx` 即可；或从命令面板调用，会弹出文件选择对话框
+- 提取结果（版式摘要与无法映射项）写入「输出 → MDDTT」面板，随后输入预设名保存
+- 预设默认存于插件用户级目录（`mddtt.presetStorage` 设为 `workspace` 则存到 `.vscode/mddtt-presets/` 以便团队共享）；插件会只读兼容命令行的 `~/.mddtt/presets/`
+- 插件未暴露命令行全部参数；需要精细控制（页边距、页码格式等）时改用命令行
 
 ## 基本用法
 
@@ -68,6 +88,7 @@ mddtt 模板.docx --save-preset firm --overwrite  # 覆盖同名自定义预设
 | `--line-height 1.5`                | 行距：`auto` 为倍数；`exact`/`atLeast` 为固定行高 pt        |
 | `--line-rule exact`                | 行距规则：auto / exact / atLeast（配合 `--line-height`） |
 | `--indent 2`                       | 首行缩进字符数                                         |
+| `--no-breaks`                      | 单个换行符按软换行处理（合并为同一段中的空格）；默认单换行即段内换行 |
 | `-p bottom`                        | 页码位置（top/bottom/none）                           |
 | `--page-num-format 第X页/共Y页`        | 页码格式                                            |
 | `-o 路径`                            | 指定输出文件路径                                        |
@@ -76,6 +97,10 @@ mddtt 模板.docx --save-preset firm --overwrite  # 覆盖同名自定义预设
 | `--help`                           | 查看全部参数                                          |
 
 ## 注意事项
+
+- **换行识别**：默认**单个换行符即段内换行**（中文文档多以换行分行）；空行（连续两个换行符）为新的 Word 段落。若需要标准 Markdown 软换行语义（单换行合并为空格），加 `--no-breaks`
+
+- **行内对齐与缩进**：换行符结尾的行不会被拉伸。生成的文档已关闭 Word 的"扩展手动换行符结尾行的对齐"（`w:doNotExpandShiftReturn`），因此用 `--align justify` 时每一行同样保持正常字间距，不会为了占满整行而撑开字距。另外，**换行后的行也会缩进两字符**（Word 的 `firstLineChars` 本身只管段落第一行），符合中文排版惯例
 
 - 输出文件已存在时必须加 `--overwrite`，否则报错并退出
 

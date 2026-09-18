@@ -189,6 +189,9 @@ const SPECS = [
   { name: "--no-italic", flag: true, help: "斜体按普通文字渲染", apply: (p) => (p.styles = { ...p.styles, italic: false }) },
   { name: "--no-strike", flag: true, help: "删除线按普通文字渲染", apply: (p) => (p.styles = { ...p.styles, strike: false }) },
   { name: "--heading-uppercase", flag: true, help: "标题英文转大写", apply: (p) => (p.styles = { ...p.styles, headingUppercase: true }) },
+  // ---- 换行 ----
+  { name: "--breaks", flag: true, help: "单个换行符即段内换行（默认开启）", apply: (p) => (p.markdown = { ...p.markdown, breaks: true }) },
+  { name: "--no-breaks", flag: true, help: "单个换行符按软换行处理（合并为同一段中的空格）", apply: (p) => (p.markdown = { ...p.markdown, breaks: false }) },
   // ---- 输出控制 ----
   { name: "--output", alias: "-o", help: "输出文件路径", cli: "output" },
   { name: "--overwrite", flag: true, help: "覆盖已存在的输出文件", cli: "overwrite" },
@@ -230,7 +233,7 @@ export function parseHeadingSize(v, patch) {
 
 /** 解析 argv（已剔除位置参数）为 { patch, output, overwrite, preset, errors } */
 export function parseArgs(argv) {
-  const patch = { page: {}, fonts: {}, sizes: {}, heading: {}, paragraph: {}, header: {}, footer: {}, pageNumber: {}, styles: {} };
+  const patch = { page: {}, fonts: {}, sizes: {}, heading: {}, paragraph: {}, header: {}, footer: {}, pageNumber: {}, styles: {}, markdown: {} };
   const result = { patch, output: null, overwrite: false, preset: null, savePreset: null, errors: [] };
   const specByName = new Map();
   for (const s of SPECS) {

@@ -394,7 +394,7 @@ console.log("\n—— 用例 7：--save-preset 格式提取与复用 ——");
   check("sundy往返-标题宋体 H1-H3 字号", lo.fonts?.heading?.eastAsia === "宋体" && JSON.stringify(lo.sizes?.heading) === JSON.stringify([22, 16, 14, 14, 14, 14]));
   check("sundy往返-H1 居中加粗 H4 不加粗", lo.heading?.align?.[0] === "center" && lo.heading?.bold?.[0] === true && lo.heading?.bold?.[3] === false);
   check("sundy往返-标题段前 0.5 行段后 0 行", lo.heading?.spacing?.beforeLines === 0.5 && lo.heading?.spacing?.afterLines === 0);
-  check("sundy往返-段落三项（缩进2/行距1.28/段后0.5行）", lo.paragraph?.firstLineChars === 2 && lo.paragraph?.line === 1.28 && lo.paragraph?.afterLines === 0.5);
+  check("sundy往返-段落三项（缩进2/行距1.28/段后1.5行）", lo.paragraph?.firstLineChars === 2 && lo.paragraph?.line === 1.28 && lo.paragraph?.afterLines === 1.5);
   check("sundy往返-页眉距顶端 0.85cm", lo.page?.margin?.header === 0.85);
   check("sundy往返-页眉三行左对齐", lo.header?.text?.split("\n").length === 3 && lo.header?.align === "left");
   check("sundy往返-页眉字号 9", lo.sizes?.header === 9);
@@ -495,8 +495,61 @@ console.log("\n—— 用例 8：图片超链接/标题、行距规则、格式�
   for (const p of [imgMd, imgDocx, exactDocx, exactReused, ambDocx]) fs.rmSync(p, { force: true });
 }
 
-// ============ 用例 9：docx 富结构降级（修订/批注/文本框/浮动对象/分节） ============
-console.log("\n—— 用例 9：docx 富结构降级 ——");
+// ============ 用例 9：换行识别（breaks / --no-breaks） ============
+console.log("\n—— 用例 9：换行识别 ——");
+{
+  const hbMd = path.join(__dirname, "hardbreak.md");
+  const hbDocx = path.join(__dirname, "hardbreak.docx");
+  const hbNoBreaksDocx = path.join(__dirname, "hardbreak-nobreaks.docx");
+  const readDocumentXml = async (p) => {
+    const z = await JSZip.loadAsync(fs.readFileSync(p));
+    return z.file("word/document.xml").async("string");
+  };
+  const paragraphsOf = (xml) => xml.match(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g) || [];
+  for (const p of [hbMd, hbDocx, hbNoBreaksDocx]) fs.rmSync(p, { force: true });
+
+  // 单换行（中文文档每行一换行的常见写法）、双空格换行、空行分段
+  fs.writeFileSync(hbMd, [
+    "单换行甲行",
+    "单换行乙行",
+    "",
+    "双空格甲行  ",
+    "双空格乙行",
+    "",
+    "多行甲行",
+    "多行乙行",
+    "多行丙行",
+    "",
+    "新段落",
+    "",
+  ].join("\n"), "utf-8");
+
+  execFileSync(process.execPath, [cli, hbMd, "-o", hbDocx], { stdio: "pipe" });
+  const hbXml = await readDocumentXml(hbDocx);
+  const hbParas = paragraphsOf(hbXml);
+  check("换行-单换行生成段内换行（w:br）", (hbParas[0].match(/<w:br\/>/g) || []).length === 1 && hbParas[0].includes("单换行甲行") && hbParas[0].includes("单换行乙行"));
+  check("换行-换行后补两字符缩进（全角空格×2）", /<w:br\/><\/w:r><w:r><w:t xml:space="preserve">\u3000\u3000<\/w:t><\/w:r>/.test(hbParas[0]));
+  check("换行-双空格硬换行仍在同一段", (hbParas[1].match(/<w:br\/>/g) || []).length === 1 && hbParas[1].includes("双空格甲行") && hbParas[1].includes("双空格乙行"));
+  check("换行-连续单换行逐行保留", (hbParas[2].match(/<w:br\/>/g) || []).length === 2 && hbParas[2].includes("多行甲行") && hbParas[2].includes("多行丙行"));
+  check("换行-空行仍分为独立段落", hbParas.length === 4 && hbParas[3].includes("新段落"));
+
+  execFileSync(process.execPath, [cli, hbMd, "-o", hbNoBreaksDocx, "--no-breaks"], { stdio: "pipe" });
+  const nbXml = await readDocumentXml(hbNoBreaksDocx);
+  check("换行---no-breaks 时单换行不生成 w:br", !paragraphsOf(nbXml)[0].includes("<w:br/>") && paragraphsOf(nbXml)[0].includes("单换行甲行") && paragraphsOf(nbXml)[0].includes("单换行乙行"));
+
+  // settings.xml：关闭"扩展手动换行符结尾行的对齐"，避免两端对齐时把各短行撑满整行
+  const hbZip = await JSZip.loadAsync(fs.readFileSync(hbDocx));
+  const settings = await hbZip.file("word/settings.xml").async("string");
+  const compat = /<w:compat>[\s\S]*?<\/w:compat>/.exec(settings);
+  check("换行-写入 doNotExpandShiftReturn", settings.includes("<w:doNotExpandShiftReturn/>"));
+  check("换行-compatSetting 顺序合规（兼容性开关在前）",
+    compat && compat[0].indexOf("<w:doNotExpandShiftReturn/>") < compat[0].indexOf("<w:compatSetting"));
+
+  for (const p of [hbMd, hbDocx, hbNoBreaksDocx]) fs.rmSync(p, { force: true });
+}
+
+// ============ 用例 10：docx 富结构降级（修订/批注/文本框/浮动对象/分节） ============
+console.log("\n—— 用例 10：docx 富结构降级 ——");
 {
   const richDocx = path.join(__dirname, "rich-import.docx");
   const richMd = path.join(__dirname, "rich-import.md");

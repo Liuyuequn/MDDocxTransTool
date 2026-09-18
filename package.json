@@ -1,26 +1,151 @@
 {
   "name": "mddtt",
+  "displayName": "MDDTT — Markdown 与 docx 互转",
+  "description": "MDDTT - Markdown 与 docx 互转工具（命令行 + VS Code 插件）；可从 docx 提取版式为可复用预设",
   "version": "0.1.0",
-  "description": "MDDTT - Markdown 与 docx 互转命令行工具",
   "type": "module",
+  "publisher": "Liuyuequn",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Liuyuequn/MDDocxTransTool.git"
+  },
+  "main": "./extension/extension.cjs",
   "bin": {
     "mddtt": "./src/cli.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18",
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": false
   },
   "scripts": {
     "test": "npm run test:node && npm run test:openxml",
-    "test:node": "node test/unit-test.mjs && node test/run-test.mjs",
-    "test:openxml": "dotnet restore test/openxml-validator/MDDTT.OpenXmlValidator.csproj --locked-mode && dotnet run --project test/openxml-validator/MDDTT.OpenXmlValidator.csproj --configuration Release --no-restore -- test/sample-default.docx test/sample-sundy.docx test/sample-custom.docx"
+    "test:node": "node test/unit-test.mjs && node test/run-test.mjs && node test/extension-test.mjs",
+    "test:extension": "node test/extension-test.mjs",
+    "test:openxml": "dotnet restore test/openxml-validator/MDDTT.OpenXmlValidator.csproj --locked-mode && dotnet run --project test/openxml-validator/MDDTT.OpenXmlValidator.csproj --configuration Release --no-restore -- test/sample-default.docx test/sample-sundy.docx test/sample-custom.docx",
+    "package:vsix": "npx --yes @vscode/vsce package"
   },
   "keywords": [
     "markdown",
     "docx",
     "converter",
-    "cli"
+    "cli",
+    "word"
   ],
-  "license": "MIT",
+  "activationEvents": [
+    "onCommand:mddtt.convertMarkdownToDocx",
+    "onCommand:mddtt.convertDocxToMarkdown",
+    "onCommand:mddtt.extractPreset",
+    "onCommand:mddtt.selectDefaultPreset",
+    "onCommand:mddtt.showOutput"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "mddtt.convertMarkdownToDocx",
+        "title": "MDDTT: Markdown 转 docx",
+        "category": "MDDTT"
+      },
+      {
+        "command": "mddtt.convertDocxToMarkdown",
+        "title": "MDDTT: docx 转 Markdown",
+        "category": "MDDTT"
+      },
+      {
+        "command": "mddtt.extractPreset",
+        "title": "MDDTT: 提取 docx 版式为预设",
+        "category": "MDDTT"
+      },
+      {
+        "command": "mddtt.selectDefaultPreset",
+        "title": "MDDTT: 选择默认预设",
+        "category": "MDDTT"
+      },
+      {
+        "command": "mddtt.showOutput",
+        "title": "MDDTT: 显示输出日志",
+        "category": "MDDTT"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "mddtt.convertMarkdownToDocx",
+          "when": "resourceExtname == .md",
+          "group": "mddtt@1"
+        },
+        {
+          "command": "mddtt.convertDocxToMarkdown",
+          "when": "resourceExtname == .docx",
+          "group": "mddtt@2"
+        },
+        {
+          "command": "mddtt.extractPreset",
+          "when": "resourceExtname == .docx",
+          "group": "mddtt@3"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "mddtt.convertMarkdownToDocx",
+          "when": "resourceExtname == .md",
+          "group": "mddtt@1"
+        },
+        {
+          "command": "mddtt.convertDocxToMarkdown",
+          "when": "resourceExtname == .docx",
+          "group": "mddtt@2"
+        },
+        {
+          "command": "mddtt.extractPreset",
+          "when": "resourceExtname == .docx",
+          "group": "mddtt@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "MDDTT",
+      "properties": {
+        "mddtt.defaultPreset": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Markdown 转 docx 使用的预设：内置 `sundy`（圣典法律文书）或自定义预设名；留空表示默认格式（与 sundy 排版相同，仅无页眉页脚页码）。可用命令「MDDTT: 选择默认预设」设置。"
+        },
+        "mddtt.presetStorage": {
+          "type": "string",
+          "enum": [
+            "user",
+            "workspace"
+          ],
+          "enumDescriptions": [
+            "用户级：保存到 VS Code 全局存储，本机所有项目可用",
+            "工作区级：保存到 .vscode/mddtt-presets/，可随仓库提交、团队共享"
+          ],
+          "default": "user",
+          "description": "从 docx 提取的自定义预设（及其页眉页脚图片）保存位置"
+        },
+        "mddtt.confirmOverwrite": {
+          "type": "boolean",
+          "default": true,
+          "description": "输出文件已存在时先弹出确认框；关闭后直接覆盖"
+        },
+        "mddtt.openAfterConvert": {
+          "type": "boolean",
+          "default": true,
+          "description": "转换完成后提示打开结果（docx 交给系统默认程序，Markdown 在编辑器中打开）"
+        }
+      }
+    }
+  },
   "dependencies": {
     "docx": "^9.7.1",
     "image-size": "^2.0.2",

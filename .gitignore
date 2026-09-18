@@ -5,3 +5,4 @@ MDPictures/
 maintenance/*.md
 test/openxml-validator/bin/
 test/openxml-validator/obj/
+*.vsix

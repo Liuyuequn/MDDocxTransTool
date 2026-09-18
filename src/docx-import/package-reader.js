@@ -11,9 +11,10 @@ import { flattenTextBoxes } from "./extractors/textboxes.js";
 /**
  * 在交给 mammoth 之前规范化 docx：接受修订、插入批注说明、展平文本框、
  * 降级浮动 DrawingML，并将多栏/多节内容按源顺序线性排列。
+ * 接受 Buffer / Uint8Array。
  */
-export async function prepareDocxForMarkdown(docxPath) {
-  const zip = await JSZip.loadAsync(fs.readFileSync(docxPath));
+export async function prepareDocxBufferForMarkdown(input) {
+  const zip = await JSZip.loadAsync(input);
   const documentFile = zip.file("word/document.xml");
   if (!documentFile) throw new Error("不是有效的 docx 文件（缺少 word/document.xml）");
 
@@ -38,6 +39,11 @@ export async function prepareDocxForMarkdown(docxPath) {
   zip.file("word/document.xml", js2xml(document, { compact: false, spaces: 0 }));
   const buffer = await zip.generateAsync({ type: "nodebuffer" });
   return { buffer, annotations };
+}
+
+/** 从 docx 文件读取并规范化（prepareDocxBufferForMarkdown 的路径版） */
+export async function prepareDocxForMarkdown(docxPath) {
+  return prepareDocxBufferForMarkdown(fs.readFileSync(docxPath));
 }
 
 function findFirstElement(node, name) {

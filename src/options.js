@@ -67,7 +67,7 @@ export const defaultOptions = {
     align: null,           // null = 默认（左）
     firstLineChars: 2,     // 首行缩进字符数（仅普通正文段落）
     afterPt: 8,            // 段后间距（afterLines 优先于本值）
-    afterLines: 0.5,       // "行"单位段后距
+    afterLines: 1.5,       // 空行分段后的段后距，按正文行高计 1.5 行
     line: 1.28,            // 行距：lineRule=auto 时为倍数；exact/atLeast 时为固定行高（pt）
     lineRule: "auto",      // auto（倍数）/ exact（固定）/ atLeast（最小值）
   },
@@ -98,6 +98,11 @@ export const defaultOptions = {
     italic: true,
     strike: true,
     headingUppercase: false,
+  },
+  markdown: {
+    // 换行识别：true 时单个换行符即段内换行（配合双空格硬换行），false 时按 Markdown
+    // 软换行处理（合并为同一段中的空格）。中文文档多以换行分行，故默认开启。
+    breaks: true,
   },
 };
 

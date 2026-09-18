@@ -1,0 +1,14 @@
+# vsce 打包排除项（gitignore 语法）
+# 保留：src/、extension/、reference/（sundy 预设的页眉图片）、node_modules/、README.md、package.json
+
+.github/**
+.vscode/**
+.vscodeignore
+.gitignore
+test/**
+maintenance/**
+skills/**
+package-lock.json
+*.vsix
+**/*.map
+**/*.ts

@@ -16,6 +16,16 @@ import { contentWidthTwip } from "./page.js";
 
 const IMAGE_TYPES = { ".png": "png", ".jpg": "jpg", ".jpeg": "jpg", ".gif": "gif", ".bmp": "bmp" };
 
+/**
+ * 换行后补足首行缩进。
+ *
+ * Word 的 firstLineChars 只作用于段落真正意义上的第一行；由手动换行符（w:br）
+ * 产生的后续各行不会缩进。中文排版要求一段之内每一行都缩进两字符，因此在换行符后
+ * 补两个全角空格（U+3000）——一个全角空格恰好等于一个汉字宽度，实测可使后续行
+ * 与首行完全对齐（零宽空格、窄空格等写法均无法精确对齐）。
+ */
+const LINE_INDENT = "\u3000\u3000";
+
 /** 正文图片宽度上限（像素）：页面内容区宽度按 96 DPI 换算（1px = 15twip），随页面设置动态变化 */
 export function maxImageWidthPx(opts) {
   return Math.floor(contentWidthTwip(opts) / 15);
@@ -95,7 +105,9 @@ export function parseInline(children, ctx) {
         }
         break;
       case "hardbreak":
+        // 换行符后补首行缩进，使段内后续各行与首行左端对齐（中文排版惯例）
         runs.push(new TextRun({ break: 1 }));
+        runs.push(new TextRun({ text: LINE_INDENT }));
         break;
       case "softbreak":
         runs.push(new TextRun({ text: " " }));

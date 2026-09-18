@@ -34,7 +34,7 @@ export const presets = {
     },
     paragraph: {
       firstLineChars: 2,              // 首行缩进两字符
-      afterLines: 0.5,                // 段间距 0.5 行
+      afterLines: 1.5,                // 空行分段后的段后距 1.5 行
       line: 1.28,                     // 行距 1.28 行
     },
     header: {
