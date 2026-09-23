@@ -67,7 +67,7 @@ export const defaultOptions = {
     align: null,           // null = 默认（左）
     firstLineChars: 2,     // 首行缩进字符数（仅普通正文段落）
     afterPt: 8,            // 段后间距（afterLines 优先于本值）
-    afterLines: 1.5,       // 空行分段后的段后距，按正文行高计 1.5 行
+    afterLines: 0.5,       // 空行分段后的段后距，按正文行高计 0.5 行
     line: 1.28,            // 行距：lineRule=auto 时为倍数；exact/atLeast 时为固定行高（pt）
     lineRule: "auto",      // auto（倍数）/ exact（固定）/ atLeast（最小值）
   },

@@ -394,7 +394,7 @@ console.log("\n—— 用例 7：--save-preset 格式提取与复用 ——");
   check("sundy往返-标题宋体 H1-H3 字号", lo.fonts?.heading?.eastAsia === "宋体" && JSON.stringify(lo.sizes?.heading) === JSON.stringify([22, 16, 14, 14, 14, 14]));
   check("sundy往返-H1 居中加粗 H4 不加粗", lo.heading?.align?.[0] === "center" && lo.heading?.bold?.[0] === true && lo.heading?.bold?.[3] === false);
   check("sundy往返-标题段前 0.5 行段后 0 行", lo.heading?.spacing?.beforeLines === 0.5 && lo.heading?.spacing?.afterLines === 0);
-  check("sundy往返-段落三项（缩进2/行距1.28/段后1.5行）", lo.paragraph?.firstLineChars === 2 && lo.paragraph?.line === 1.28 && lo.paragraph?.afterLines === 1.5);
+  check("sundy往返-段落三项（缩进2/行距1.28/段后0.5行）", lo.paragraph?.firstLineChars === 2 && lo.paragraph?.line === 1.28 && lo.paragraph?.afterLines === 0.5);
   check("sundy往返-页眉距顶端 0.85cm", lo.page?.margin?.header === 0.85);
   check("sundy往返-页眉三行左对齐", lo.header?.text?.split("\n").length === 3 && lo.header?.align === "left");
   check("sundy往返-页眉字号 9", lo.sizes?.header === 9);

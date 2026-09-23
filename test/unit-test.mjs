@@ -69,8 +69,8 @@ for (const newline of ["\n", "\r\n"]) {
     assert.match(paragraphs[0], /第一句。[\s\S]*<w:br\/>[\s\S]*第二句。/);
     assert.match(paragraphs[0], /<w:b\/>/);
     assert.match(paragraphs[0], /w:line="307" w:lineRule="auto"/);
-    // 1.5 行段后距按四号正文的行高换算：14 × 1.28 × 1.5 × 20 = 538 twip。
-    for (const paragraph of paragraphs) assert.match(paragraph, /w:after="538"/);
+    // 0.5 行段后距按四号正文的行高换算：14 × 1.28 × 0.5 × 20 = 179 twip。
+    for (const paragraph of paragraphs) assert.match(paragraph, /w:after="179"/);
     assert.match(paragraphs[1], /第三句。/);
   });
 }
@@ -202,11 +202,11 @@ test("settings.xml: compatSetting 排在 doNotExpandShiftReturn 之后（符合 
   assert.ok(flagsAt < settingAt, "compatSetting 必须位于兼容性开关之后");
 });
 
-test("sundy 混合换行：段内 1.28 倍，段后 1.5 行，不插入空段落", async () => {
+test("sundy 混合换行：段内 1.28 倍，段后 0.5 行，不插入空段落", async () => {
   const paragraphs = await markdownParagraphs("甲。  \n乙。\n\n丙。  \n丁。", mergeOptions(defaultOptions, presets.sundy));
   assert.equal(paragraphs.length, 2);
   for (const paragraph of paragraphs) {
-    assert.match(paragraph, /w:after="538"/);
+    assert.match(paragraph, /w:after="179"/);
     assert.match(paragraph, /w:line="307" w:lineRule="auto"/);
     assert.equal((paragraph.match(/<w:br\/>/g) || []).length, 1);
   }

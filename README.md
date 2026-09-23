@@ -89,7 +89,7 @@ npm link
 ### 安装与调试
 
 - **开发调试**：用 VS Code 打开本项目，按 `F5`（`.vscode/launch.json` 已配置 `extensionDevelopmentPath`），会启动「扩展开发宿主」窗口，在其中打开任意文件夹即可使用，无需先打包。
-- **打包安装**：执行 `npm run package:vsix` 生成 `.vsix`，再在 VS Code 中「扩展 → ⋯ → 从 VSIX 安装」；或执行 `code --install-extension mddtt-0.1.0.vsix`（安装后需重载窗口）。
+- **打包安装**：执行 `npm run package:vsix` 生成 `.vsix`，再在 VS Code 中「扩展 → ⋯ → 从 VSIX 安装」；或执行 `code --install-extension mddtt-<版本号>.vsix`（安装后需重载窗口）。
 - **工作区信任**：插件声明了 `capabilities.untrustedWorkspaces.supported: true`，因此在未信任文件夹的「受限模式」下仍可用（它只处理你显式选择的文档，不执行工作区中的代码）；同时声明 `virtualWorkspaces: false`，因为转换需要真实文件系统，虚拟工作区（如 github.dev）中会被 VS Code 禁用并注明原因。
 - 若要发布到 Marketplace，需先把 `package.json` 的 `publisher` 改为自己的发布者 ID。
 
@@ -213,9 +213,9 @@ mddtt --help                                   # 忘记参数时查帮助
 | `![图片](路径)`               | 嵌入图片，自动缩放至不超过页宽，独立成段时居中 |
 | 行尾两个空格再换行（硬换行）            | Word 段内换行，默认行距 1.28 倍 |
 | 单个换行符（普通换行）                | Word 段内换行（默认开启；`--no-breaks` 可改为合并为空格） |
-| 连续两个换行符（中间空一行）            | Word 新段落，默认段后间距 1.5 行 |
+| 连续两个换行符（中间空一行）            | Word 新段落，默认段后间距 0.5 行 |
 
-以上间距规则适用于默认格式及 `sundy` 预设，支持 LF 和 Windows CRLF 换行符。段后间距的“行”按正文行高换算（四号 14pt、1.28 倍行距时为 26.9pt），是两段之间额外留出的距离。`--line-height` 可覆盖段内行距，`--para-spacing` 可覆盖段后间距。
+以上间距规则适用于默认格式及 `sundy` 预设，支持 LF 和 Windows CRLF 换行符。段后间距的“行”按正文行高换算（四号 14pt、1.28 倍行距时为 8.96pt），是两段之间额外留出的距离。`--line-height` 可覆盖段内行距，`--para-spacing` 可覆盖段后间距。
 
 换行识别说明：**默认单个换行符即段内换行**——中文文档多以换行分行，若按 Markdown 软换行处理（合并为同一段中的空格）会导致整段并成一行。若需要标准 Markdown 软换行语义（如英文长段落按列宽折行后重新排版），加 `--no-breaks`。
 
@@ -387,6 +387,6 @@ mddtt 模板.docx --save-preset firm --overwrite  # 覆盖同名自定义预设
 | 标题间距 | 段前 0.5 行，段后 0 行                                                                                                                                |
 | 正文字体 | 中文仿宋 / 西文 Times New Roman                                                                                                                      |
 | 正文字号 | 四号                                                                                                                                             |
-| 正文段落 | 首行缩进 2 字符；段后 1.5 行；行距 1.28 倍                                                                                                                   |
+| 正文段落 | 首行缩进 2 字符；段后 0.5 行；行距 1.28 倍                                                                                                                   |
 | 页眉   | 距页面顶端 0.85cm；三行左对齐：①圣典律师事务所 ②圣典官网：<https://www.sundylawyer.com/（超链接）③总所地址：南京市建邺区奥体大街68号新城科技园4A栋6楼、7楼；右端放置律所> logo；页眉底端红→橙→金渐变色带（以红为主）；仿宋/Times New Roman 小五 |
 | 页脚   | 居中页码「第X页/共Y页」，仿宋/Times New Roman 五号                                                                                                            |

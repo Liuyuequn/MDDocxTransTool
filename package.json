@@ -2,7 +2,7 @@
   "name": "mddtt",
   "displayName": "MDDTT — Markdown 与 docx 互转",
   "description": "MDDTT - Markdown 与 docx 互转工具（命令行 + VS Code 插件）；可从 docx 提取版式为可复用预设",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "publisher": "Liuyuequn",
   "license": "MIT",
